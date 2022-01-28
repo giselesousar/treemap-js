@@ -1,0 +1,21 @@
+@import url('https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap');
+
+.path {
+    stroke-width: 1.5; 
+    fill-opacity: 1; 
+    stroke: rgb(255, 255, 255);
+    stroke-opacity: 1; 
+    opacity: 1;
+    fill:rgb(233, 230, 230);
+    cursor: pointer;
+}
+.path:hover {
+    stroke: rgb(54, 54, 54);
+    stroke-width: 2; 
+}
+.text {
+    fill: rgb(66, 66, 66); 
+    fill-opacity: 1;
+    font-size: 1.2vmax;
+    font-family: 'Roboto', sans-serif;
+}
