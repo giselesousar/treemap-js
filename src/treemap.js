@@ -1,22 +1,20 @@
-import { createSvgElement, getElementById } from './utils/dom';
+import { createElement, createSvgElement, getElementById } from './utils/dom';
 import { calculateRectColor } from './utils/heatmap';
 import './treemap.scss';
 
-var margin = 8;
-var marginTop = 25;
-var toggleButtonHeight = 40;
-var currentRoot = null;
-var expandedList = [];
-var root = null;
+const fontSize = 14;
+const fontFamily = 'Roboto';
 
 const events = {
   ROOT_CHANGE: new Event('root-change')
 }
 
-function resize(params = {}) {
-  const { height } = params;
-  marginTop = height / 30;
-}
+var margin = 6;
+var currentRoot = null;
+var expandedList = [];
+var root = null;
+var marginTop = fontSize + 2;
+var toggleButtonHeight = fontSize + 20;
 
 function getJsonObject(data) {
   return JSON.parse(data || '{}');
@@ -25,16 +23,14 @@ function getJsonObject(data) {
 function calculateRectCoordinates(params = {}) {
   const { left, top, right, bottom} = params;
   return {
-    rect: { top, bottom, left, right },
-    text: { top: top +  marginTop, left: left + margin }
+    rect: { top, bottom, left, right }
   }
 }
 
 function calculateRootCoordinates(tree, params = {}) {
   const { top, bottom, left, right } = params;
   tree['coords'] = {
-    rect: { top: top + toggleButtonHeight, bottom: bottom - top * margin, left, right: right - left * margin },
-    text: { left: left + margin, top: top + marginTop + toggleButtonHeight }
+    rect: { top: top + toggleButtonHeight, bottom: bottom - top * margin, left, right: right - left * margin }
   }
 }
 
@@ -96,14 +92,28 @@ function createPathElement(className, fill, params = {}) {
 }
 
 function createTextElement(className, value, color, params = {}) {
-  const { top, left } = params;
-  const text = createSvgElement('text');
-  text.classList.add(className);
-  text.setAttribute('x', left);
-  text.setAttribute('y', top);
-  text.setAttribute('style', `fill: ${color};`)
-  text.textContent = value;
-  return text;
+  const { top, right, left } = params;
+  const textTag = createSvgElement('text');
+  const canvas = createElement('canvas');
+  const context = canvas.getContext('2d');
+  context.font = fontSize + 'px ' + fontFamily;
+
+  textTag.classList.add(className);
+  textTag.setAttribute('x', 0);
+  textTag.setAttribute('y', 0);
+  textTag.setAttribute('data-notex', 1);
+  textTag.setAttribute('text-anchor', 'start');
+  textTag.setAttribute('data-unformatted', value);
+  textTag.setAttribute('data-math', 'N');
+  textTag.setAttribute('style', `font-size: ${fontSize}px; fill: ${color}; fill-opacity: 1; white-space: pre;`)
+  textTag.textContent = value;
+
+  const textPixelWidth = context.measureText(value).width + margin;
+  const scale = (right - left)/textPixelWidth;
+  const transform = scale > 1 ? `translate(${left + margin}, ${top + fontSize})` : `translate(${left}, ${top + scale*fontSize})scale(${scale})`;
+  textTag.setAttribute('transform', transform);
+
+  return textTag;
 }
 
 function getCoordinatesOfChildren(node) {
@@ -124,7 +134,7 @@ function createRect(node) {
   const container = createSvgElement('g');
   container.addEventListener('click', () => expand(node));
   container.appendChild(createPathElement('path', fill, coords.rect));
-  container.appendChild(createTextElement('text', value, color, coords.text));
+  container.appendChild(createTextElement('text', value, color, coords.rect));
   return container;
 }
 
@@ -188,7 +198,7 @@ function createToggleButton(params = {}) {
   path.addEventListener('click', () => collapse());
   container.appendChild(path);
 
-  const text = createTextElement('text', 'all: ' + root.size, color, { top: top + marginTop, left: left + margin });
+  const text = createTextElement('text', 'all: ' + root.size, color, { top: top + (toggleButtonHeight - fontSize)/2, right, left });
   text.setAttribute('id', 'collapse-button-text');
   container.appendChild(text);
 
@@ -214,7 +224,6 @@ function cerateTreemapContainer(targetElement, params = {}) {
 
 function renderTreemap(targetElement, params) {
   targetElement.innerHTML = '';
-  resize(params);
   calculateRootCoordinates(currentRoot, params);
   targetElement.appendChild(createRect(currentRoot));
   traverse(currentRoot, targetElement)
