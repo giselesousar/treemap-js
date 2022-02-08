@@ -35,7 +35,7 @@ function calculateRootCoordinates(tree, params = {}) {
 }
 
 function fillTheRectangleVertically(node, totalLength) {
-  const { children, coords, size } = node;
+  const { children, coords, propotion } = node;
   const coordinates = [];
   let previous = coords;
 
@@ -43,7 +43,7 @@ function fillTheRectangleVertically(node, totalLength) {
     let left = coords.rect.left + margin;
     let top = index > 0 ? previous.rect.bottom + margin : coords.rect.top + 1.5 * marginTop;
     let right = coords.rect.right - margin;
-    let bottom = top + ((child.size * totalLength)/size);
+    let bottom = top + ((child.propotion * totalLength)/propotion);
     
     let newCoords = calculateRectCoordinates({ left, top, right, bottom });
     coordinates.push(newCoords);
@@ -54,14 +54,14 @@ function fillTheRectangleVertically(node, totalLength) {
 }
 
 function fillTheRectangleHorizontally(node, totalLength) {
-  const { children, coords, size } = node;
+  const { children, coords, propotion } = node;
   const coordinates = [];
   let previous = coords;
 
   children?.forEach((child, index) => {
     let left = index > 0 ? previous.rect.right + margin : previous.rect.left + margin;
     let top = coords.rect.top + 1.5 * marginTop;
-    let right = left + ((child.size * totalLength)/size);
+    let right = left + ((child.propotion * totalLength)/propotion);
     let bottom = coords.rect.bottom - margin;
 
     let newCoords = calculateRectCoordinates({ left, top, right, bottom });
@@ -91,7 +91,7 @@ function createPathElement(className, fill, params = {}) {
   return path;
 }
 
-function createTextElement(className, value, color, params = {}) {
+function createTextElement(className, name, color, params = {}) {
   const { top, right, left } = params;
   const textTag = createSvgElement('text');
   const canvas = createElement('canvas');
@@ -103,12 +103,12 @@ function createTextElement(className, value, color, params = {}) {
   textTag.setAttribute('y', 0);
   textTag.setAttribute('data-notex', 1);
   textTag.setAttribute('text-anchor', 'start');
-  textTag.setAttribute('data-unformatted', value);
+  textTag.setAttribute('data-unformatted', name);
   textTag.setAttribute('data-math', 'N');
   textTag.setAttribute('style', `font-size: ${fontSize}px; fill: ${color}; fill-opacity: 1; white-space: pre;`)
-  textTag.textContent = value;
+  textTag.textContent = name;
 
-  const textPixelWidth = context.measureText(value).width + margin;
+  const textPixelWidth = context.measureText(name).width + margin;
   const scale = (right - left)/textPixelWidth;
   const transform = scale > 1 ? `translate(${left + margin}, ${top + fontSize})` : `translate(${left}, ${top + scale*fontSize})scale(${scale})`;
   textTag.setAttribute('transform', transform);
@@ -129,20 +129,20 @@ function getCoordinatesOfChildren(node) {
 }
 
 function createRect(node) {
-  const { value, coords } = node;
-  const { fill, color } = calculateRectColor(root.size, node.size);
+  const { name, coords } = node;
+  const { fill, color } = calculateRectColor(root.propotion, node.propotion);
   const container = createSvgElement('g');
   container.addEventListener('click', () => expand(node));
   container.appendChild(createPathElement('path', fill, coords.rect));
-  container.appendChild(createTextElement('text', value, color, coords.rect));
+  container.appendChild(createTextElement('text', name, color, coords.rect));
   return container;
 }
 
 function createNode(jsonData) {
   return {
       parent: jsonData.parent || null,
-      size: jsonData.size || 0,
-      value: jsonData.hasOwnProperty('value') ? jsonData.value : null,
+      propotion: jsonData.propotion || 0,
+      name: jsonData.hasOwnProperty('name') ? jsonData.name : null,
       children: jsonData.children || [],
       coords: jsonData.coords || {}
     }
@@ -151,9 +151,9 @@ function createNode(jsonData) {
 function createSubnode(data, parentNode) {
   data?.children?.forEach((child) => {
       const node = createNode({ 
-          value: child.value,
+          name: child.name,
           parent: parentNode,
-          size: child.size,
+          propotion: child.propotion,
           children: []
       });
       parentNode?.children?.push(node);
@@ -163,14 +163,14 @@ function createSubnode(data, parentNode) {
 
 function updateToggleButtonText() {
   const textElement = getElementById('collapse-button-text');
-  const textContent = expandedList.map((node) => node.value);
+  const textContent = expandedList.map((node) => node.name);
   textContent.unshift('all');
-  const totalSize = textContent.length == 1 ? root.size : expandedList[expandedList.length - 1].size;
+  const totalSize = textContent.length == 1 ? root.propotion : expandedList[expandedList.length - 1].propotion;
   textElement.textContent = textContent.join(' / ') + ': ' + totalSize;
 }
 
 function isAlreadyExpanded(node) {
-  return expandedList.filter((item) => item.value == node.value).length > 0;
+  return expandedList.filter((item) => item.name == node.name).length > 0;
 }
 
 function expand(node) {
@@ -191,14 +191,14 @@ function collapse() {
 
 function createToggleButton(params = {}) {
   const { top, left, right } = params;
-  const { fill, color } = calculateRectColor(root.size, root.size);
+  const { fill, color } = calculateRectColor(root.propotion, root.propotion);
   const container = createSvgElement('g');
 
   const path = createPathElement('path', fill, { top, left, right: right - left * margin, bottom: top + toggleButtonHeight });
   path.addEventListener('click', () => collapse());
   container.appendChild(path);
 
-  const text = createTextElement('text', 'all: ' + root.size, color, { top: top + (toggleButtonHeight - fontSize)/2, right, left });
+  const text = createTextElement('text', 'all: ' + root.propotion, color, { top: top + (toggleButtonHeight - fontSize)/2, right, left });
   text.setAttribute('id', 'collapse-button-text');
   container.appendChild(text);
 
@@ -232,8 +232,8 @@ function renderTreemap(targetElement, params) {
 export function create(jsonData) {
   const parsedData = getJsonObject(jsonData);
   const rootNode = createNode({
-      value: parsedData.value,
-      size: parsedData.size,
+      name: parsedData.name,
+      propotion: parsedData.propotion,
       children: [],
       parent: null
   });
