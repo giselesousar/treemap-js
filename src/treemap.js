@@ -4,7 +4,7 @@ import './treemap.scss';
 
 var margin = 8;
 var marginTop = 25;
-var collapseButtonHeight = 40;
+var toggleButtonHeight = 40;
 var currentRoot = null;
 var expandedList = [];
 var root = null;
@@ -33,8 +33,8 @@ function calculateRectCoordinates(params = {}) {
 function calculateRootCoordinates(tree, params = {}) {
   const { top, bottom, left, right } = params;
   tree['coords'] = {
-    rect: { top: top + collapseButtonHeight, bottom: bottom - top * margin, left, right: right - left * margin },
-    text: { left: left + margin, top: top + marginTop + collapseButtonHeight }
+    rect: { top: top + toggleButtonHeight, bottom: bottom - top * margin, left, right: right - left * margin },
+    text: { left: left + margin, top: top + marginTop + toggleButtonHeight }
   }
 }
 
@@ -151,11 +151,12 @@ function createSubnode(data, parentNode) {
   });
 }
 
-function updateCollapseButtonText() {
+function updateToggleButtonText() {
   const textElement = getElementById('collapse-button-text');
   const textContent = expandedList.map((node) => node.value);
   textContent.unshift('all');
-  textElement.textContent = textContent.join(' - ');
+  const totalSize = textContent.length == 1 ? root.size : expandedList[expandedList.length - 1].size;
+  textElement.textContent = textContent.join(' / ') + ': ' + totalSize;
 }
 
 function isAlreadyExpanded(node) {
@@ -178,16 +179,16 @@ function collapse() {
   window.dispatchEvent(events.ROOT_CHANGE);
 }
 
-function createCollapseButton(params = {}) {
+function createToggleButton(params = {}) {
   const { top, left, right } = params;
   const { fill, color } = calculateRectColor(root.size, root.size);
   const container = createSvgElement('g');
 
-  const path = createPathElement('path', fill, { top, left, right: right - left * margin, bottom: top + collapseButtonHeight });
+  const path = createPathElement('path', fill, { top, left, right: right - left * margin, bottom: top + toggleButtonHeight });
   path.addEventListener('click', () => collapse());
   container.appendChild(path);
 
-  const text = createTextElement('text', 'all', color, { top: top + marginTop, left: left + margin });
+  const text = createTextElement('text', 'all: ' + root.size, color, { top: top + marginTop, left: left + margin });
   text.setAttribute('id', 'collapse-button-text');
   container.appendChild(text);
 
@@ -200,7 +201,7 @@ function cerateTreemapContainer(targetElement, params = {}) {
   svg.setAttribute('width', right + left);
   svg.setAttribute('height', bottom + top);
 
-  svg.appendChild(createCollapseButton(params));
+  svg.appendChild(createToggleButton(params));
 
   const container = createSvgElement('g');
   container.classList.add('treemap-rects');
@@ -239,7 +240,7 @@ export function render(rootNode, targetElement) {
 
   window.addEventListener('root-change', () => { 
     renderTreemap(treemapContainer, targetElementPosition); 
-    updateCollapseButtonText();
+    updateToggleButtonText();
   });
 
   renderTreemap(treemapContainer, targetElementPosition);
