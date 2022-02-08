@@ -155,7 +155,8 @@ function updateCollapseButtonText() {
   const textElement = getElementById('collapse-button-text');
   const textContent = expandedList.map((node) => node.value);
   textContent.unshift('all');
-  textElement.textContent = textContent.join(' - ');
+  const totalSize = textContent.length == 1 ? root.size : expandedList[expandedList.length - 1].size;
+  textElement.textContent = textContent.join(' / ') + ': ' + totalSize;
 }
 
 function isAlreadyExpanded(node) {
@@ -187,7 +188,7 @@ function createCollapseButton(params = {}) {
   path.addEventListener('click', () => collapse());
   container.appendChild(path);
 
-  const text = createTextElement('text', 'all', color, { top: top + marginTop, left: left + margin });
+  const text = createTextElement('text', 'all: ' + root.size, color, { top: top + marginTop, left: left + margin });
   text.setAttribute('id', 'collapse-button-text');
   container.appendChild(text);
 
