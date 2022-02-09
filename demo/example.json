@@ -1,51 +1,71 @@
 {
-    "value": "src",
-    "size": 120,
+    "name": "src",
+    "type": "DIR",
+    "proportion": 120,
+    "heatmap": 42,
     "children": [
         {
-            "value": "home",
-            "size": 70,
+            "name": "home",
+            "type": "DIR",
+            "proportion": 70,
+            "heatmap": 22,
             "children": [
                 {
-                    "value": "index.js",
-                    "size": 20,
-                    "children": []
-                },
-                {
-                    "value": "utils",
-                    "size": 50,
+                    "name": "utils",
+                    "type": "DIR",
+                    "proportion": 50,
+                    "heatmap": 10,
                     "children": [
                         {
-                            "value": "dom.js",
-                            "size": 20,
+                            "name": "color.js",
+                            "type": "FILE",
+                            "proportion": 30,
+                            "heatmap": 3,
                             "children": []
                         },
                         {
-                            "value": "color.js",
-                            "size": 30,
+                            "name": "dom.js",
+                            "type": "FILE",
+                            "proportion": 20,
+                            "heatmap": 7,
                             "children": []
                         }
                     ]
+                },
+                {
+                    "name": "index.js",
+                    "type": "FILE",
+                    "proportion": 20,
+                    "heatmap": 12,
+                    "children": []
                 }
             ]
         },
         {
-            "value": "about",
-            "size": 50,
+            "name": "about",
+            "type": "DIR",
+            "proportion": 50,
+            "heatmap": 20,
             "children": [
                 {
-                    "value": "utils.js",
-                    "size": 10,
+                    "name": "index.js",
+                    "type": "FILE",
+                    "proportion": 30,
+                    "heatmap": 6,
                     "children": []
                 },
                 {
-                    "value": "styles.css",
-                    "size": 10,
+                    "name": "utils.js",
+                    "type": "FILE",
+                    "proportion": 10,
+                    "heatmap": 8,
                     "children": []
                 },
                 {
-                    "value": "index.js",
-                    "size": 30,
+                    "name": "styles.css",
+                    "type": "FILE",
+                    "proportion": 10,
+                    "heatmap": 6,
                     "children": []
                 }
             ]
