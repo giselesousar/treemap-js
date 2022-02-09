@@ -1,32 +1,32 @@
 {
     "name": "src",
     "type": "DIR",
-    "propotion": 120,
+    "proportion": 120,
     "heatmap": 42,
     "children": [
         {
             "name": "home",
             "type": "DIR",
-            "propotion": 70,
+            "proportion": 70,
             "heatmap": 22,
             "children": [
                 {
                     "name": "utils",
                     "type": "DIR",
-                    "propotion": 50,
+                    "proportion": 50,
                     "heatmap": 10,
                     "children": [
                         {
                             "name": "color.js",
                             "type": "FILE",
-                            "propotion": 30,
+                            "proportion": 30,
                             "heatmap": 3,
                             "children": []
                         },
                         {
                             "name": "dom.js",
                             "type": "FILE",
-                            "propotion": 20,
+                            "proportion": 20,
                             "heatmap": 7,
                             "children": []
                         }
@@ -35,7 +35,7 @@
                 {
                     "name": "index.js",
                     "type": "FILE",
-                    "propotion": 20,
+                    "proportion": 20,
                     "heatmap": 12,
                     "children": []
                 }
@@ -44,27 +44,27 @@
         {
             "name": "about",
             "type": "DIR",
-            "propotion": 50,
+            "proportion": 50,
             "heatmap": 20,
             "children": [
                 {
                     "name": "index.js",
                     "type": "FILE",
-                    "propotion": 30,
+                    "proportion": 30,
                     "heatmap": 6,
                     "children": []
                 },
                 {
                     "name": "utils.js",
                     "type": "FILE",
-                    "propotion": 10,
+                    "proportion": 10,
                     "heatmap": 8,
                     "children": []
                 },
                 {
                     "name": "styles.css",
                     "type": "FILE",
-                    "propotion": 10,
+                    "proportion": 10,
                     "heatmap": 6,
                     "children": []
                 }
