@@ -29,7 +29,7 @@ function calculateRootCoordinates(params = {}) {
 }
 
 function calculateNextCoordinateVertically(params = {}) {
-  const { previousCoords, previousMode, proportion, parentProportion, parentCoords, maxLength, isFirst, maxLengthOfLastHorizontalRect, topText } = params;
+  const { previousCoords, previousMode, proportion, parentProportion, parentCoords, maxLength, isFirst, maxLengthOfLastHorizontalRect, topOffset } = params;
   let top, bottom, left, right = null;
 
   if (!isFirst && previousMode != modes.VERTICAL ) {
@@ -39,16 +39,16 @@ function calculateNextCoordinateVertically(params = {}) {
     bottom = top + ((proportion * maxLengthOfLastHorizontalRect)/parentProportion);
   } else { 
     left = isFirst ? previousCoords.left + margin : previousCoords.left;
-    top = isFirst ? previousCoords.top + topText : previousCoords.bottom + margin;
+    top = isFirst ? previousCoords.top + topOffset : previousCoords.bottom + margin;
     right = isFirst ? previousCoords.right - margin : previousCoords.right;
-    bottom = maxLengthOfLastHorizontalRect > 0 ? top + ((proportion * maxLengthOfLastHorizontalRect)/parentProportion) :  top + ((proportion * maxLength)/parentProportion) - topText;
+    bottom = maxLengthOfLastHorizontalRect > 0 ? top + ((proportion * maxLengthOfLastHorizontalRect)/parentProportion) :  top + ((proportion * maxLength)/parentProportion) - topOffset;
   }
   
   return { left, top, right, bottom };
 }
 
 function calculateNextCoordinateHorizontally(params = {}) {
-  const { previousCoords, proportion, parentProportion, parentCoords, maxLength, previousMode, maxLengthOfLastVerticalRect, isFirst, topText } = params;
+  const { previousCoords, proportion, parentProportion, parentCoords, maxLength, previousMode, maxLengthOfLastVerticalRect, isFirst, topOffset } = params;
   let top, bottom, left, right = null;
 
   if (!isFirst && previousMode != modes.HORIZONTAL) {
@@ -58,7 +58,7 @@ function calculateNextCoordinateHorizontally(params = {}) {
     bottom = parentCoords.bottom - margin;
   } else {
     left = isFirst ? previousCoords.left + margin : previousCoords.right + margin;
-    top = isFirst ? previousCoords.top + topText : previousCoords.top;
+    top = isFirst ? previousCoords.top + topOffset : previousCoords.top;
     right = maxLengthOfLastVerticalRect > 0 ? left + ((proportion * maxLengthOfLastVerticalRect)/parentProportion) : left + ((proportion * maxLength)/parentProportion) - margin;
     bottom = isFirst ? previousCoords.bottom - margin : previousCoords.bottom;
   }
@@ -91,7 +91,7 @@ function calculateCoordinatesOfChildren(parent) {
         maxLength: horizontalLength, 
         parentCoords: parent.coords,
         maxLengthOfLastVerticalRect,
-        topText: parent.topText,
+        topOffset: parent.topOffset,
         previousCoords: coords, 
         previousMode, 
         isFirst 
@@ -107,7 +107,7 @@ function calculateCoordinatesOfChildren(parent) {
         proportion: current.proportion, 
         maxLength: verticalLength,
         parentCoords: parent.coords,
-        topText: parent.topText,
+        topOffset: parent.topOffset,
         previousCoords: coords, 
         previousMode, 
 
@@ -150,23 +150,28 @@ function createPathElement(className, fill, params = {}) {
   path.classList.add(className);
   path.setAttribute('style', `fill: ${fill}`);
   path.setAttribute('d', `M${left},${top} L${right},${top} L${right},${bottom} L${left},${bottom} Z`);
-  return path;
+  return path; 
+}
+
+function measureTextWidth(text) {
+  const canvas = createElement('canvas');
+  const context = canvas.getContext('2d');
+  context.font = fontSize + 'px ' + fontFamily;
+
+  return context.measureText(text).width;
 }
 
 function createTextElement(className, node, color, isNode=true) {
   const { coords, name } = node;
   const height = coords.bottom - coords.top, width = coords.right - coords.left;
   const textTag = createSvgElement('text');
-  const canvas = createElement('canvas');
-  const context = canvas.getContext('2d');
-  context.font = fontSize + 'px ' + fontFamily;
 
   textTag.classList.add(className);
   textTag.setAttribute('x', 0);
   textTag.setAttribute('y', 0);
   textTag.textContent = name;
 
-  const textPixelWidth = context.measureText(name).width + margin;
+  const textPixelWidth = measureTextWidth(name) + margin;
   let scale = width/textPixelWidth;
   if (scale > 1 && fontSize > height || scale < 1 && scale * fontSize > height) {
     scale = 0;
@@ -175,15 +180,82 @@ function createTextElement(className, node, color, isNode=true) {
   textTag.setAttribute('style', `font-size: ${fontSize}px; fill: ${color}; fill-opacity: ${scale < 0.3 ? 0 : 1}; white-space: pre;`);
   textTag.setAttribute('transform', transform);
   if (isNode) {
-    node.topText = scale > 1 ? marginTop : scale * fontSize + 5;
+    node.topOffset = scale > 1 ? marginTop : scale * fontSize + 5;
   }
   return textTag;
+}
+
+function renderTooltip(node, fillColor, textColor) {
+  const { coords, name, proportion, type, heatmap } = node;
+  let top, bottom, right, left, middleOfTooltip = null;
+  const textContent = [
+    'label=' + name, 
+    'value=' + proportion, 
+    'type=' + type?.toLowerCase(), 
+    'heatmap=' + heatmap
+  ]
+  const maxRight = currentRoot.coords.right;
+  const maxTextPixelWidth = Math.max(...textContent.map(el => measureTextWidth(el)));
+  const container = createSvgElement('g'), path = createSvgElement('path');
+
+  path.setAttribute('style', `fill: ${fillColor}; stroke: rgb(54, 54, 54); stroke-width: 2;`);
+  container.classList.add('tooltip');
+  container.appendChild(path);
+
+  const triangle = {
+    width: 10, 
+    top: 0, 
+    bottom: 0,
+    left: 0,
+    right: 0,
+    middle: coords.top + fontSize/2 
+  }
+
+  top = triangle.middle - (textContent.length * fontSize)/2 - margin;
+  bottom =  triangle.middle + (textContent.length * fontSize)/2 + margin;
+  left = coords.right;
+  right = left + maxTextPixelWidth;
+  middleOfTooltip = (bottom - top) / 2;
+
+  triangle.top = top + middleOfTooltip*0.8;
+  triangle.bottom = bottom - middleOfTooltip*0.8;
+
+  if (right > maxRight) {
+    right = coords.right - triangle.width;
+    left = right - maxTextPixelWidth - triangle.width;
+    triangle.right = right + triangle.width;
+    path.setAttribute('d', `M${left},${top} L${right},${top} L${right},${triangle.top} L${triangle.right},${top + middleOfTooltip} L${right},${triangle.bottom} L${right},${bottom} L${left},${bottom} L${left},${top}Z`);
+  } else {
+    left = coords.right;
+    triangle.left = left - triangle.width;
+    path.setAttribute('d', `M${left},${top} L${right},${top} L${right},${bottom} L${left},${bottom} L${left},${triangle.bottom} L${triangle.left},${top + middleOfTooltip} L${left},${triangle.top} L${left},${top}Z`);
+  }
+
+  textContent.forEach((el, index) => {
+    let text = createSvgElement('text');
+    text.setAttribute('x', 0);
+    text.setAttribute('y', 0);
+    text.classList.add('tooltip-text');
+    text.setAttribute('style', `font-size: ${fontSize}px; fill: ${textColor}; white-space: pre;`);
+    text.setAttribute('transform', `translate(${left + margin}, ${top + (index + 1 ) * fontSize})`);
+    text.textContent = el;
+
+    container.appendChild(text);
+  });
+
+  getElementById('treemap').appendChild(container);
+}
+
+function removeTooltip() {
+  document.querySelectorAll('.tooltip').forEach((el) => el.remove());
 }
 
 function createRect(node) {
   const { fill, color } = calculateRectColor(root.proportion, node.proportion);
   const container = createSvgElement('g');
   container.addEventListener('click', () => expand(node));
+  container.addEventListener('mouseover', () => renderTooltip(node, fill, color));
+  container.addEventListener('mouseout', () => removeTooltip());
   container.appendChild(createPathElement('path', fill, node.coords));
   container.appendChild(createTextElement('text', node, color));
   return container;
@@ -195,19 +267,23 @@ function createNode(jsonData) {
       parent: jsonData.parent || null,
       proportion: jsonData.proportion || 0,
       children: jsonData.children || [],
-      topText: 0,
+      topOffset: 0,
+      type: jsonData.type || null,
+      heatmap: jsonData.heatmap || null,
       coords: jsonData.coords || {}
     }
 }
 
 function createSubnode(data, parentNode) {
-  data.children.sort((first, second) => second.proportion - first.proportion);
+  data.children.sort((first, second) => second.loc - first.loc);
   data.children.forEach((child) => {
       const node = createNode({ 
           name: child.name,
           parent: parentNode,
-          proportion: child.proportion,
-          topText: 0,
+          proportion: child.loc,
+          topOffset: 0,
+          type: child.type,
+          heatmap: child.value,
           children: []
       });
       parentNode?.children?.push(node);
@@ -262,6 +338,7 @@ function createToggleButton(params = {}) {
 function cerateTreemapContainer(targetElement, params = {}) {
   const { top, bottom, left, right } = params;
   const svg = createSvgElement('svg');
+  svg.setAttribute('id', 'treemap');
   svg.setAttribute('width', right + left);
   svg.setAttribute('height', bottom + top);
 
@@ -287,9 +364,11 @@ export function create(jsonData) {
   const parsedData = getJsonObject(jsonData);
   const rootNode = createNode({
       name: parsedData.name,
-      proportion: parsedData.proportion,
+      proportion: parsedData.loc,
       children: [],
-      topText: 0,
+      type: parsedData.type,
+      heatmap: parsedData.value,
+      topOffset: 0,
       parent: null
   });
   createSubnode(parsedData, rootNode);
@@ -303,6 +382,7 @@ export function render(rootNode, targetElement) {
   const treemapContainer = cerateTreemapContainer(targetElement, targetElementPosition);
 
   window.addEventListener('root-change', () => { 
+    removeTooltip();
     renderTreemap(treemapContainer, targetElementPosition); 
     updateToggleButtonText();
   });
