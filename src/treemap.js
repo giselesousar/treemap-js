@@ -353,11 +353,24 @@ function cerateTreemapContainer(targetElement, params = {}) {
   return container;
 }
 
+function clearTreemap(element) {
+  while(element.firstChild) {
+    element.removeChild(element.firstChild);
+  }
+}
+
 function renderTreemap(targetElement, params) {
-  targetElement.innerHTML = '';
+  clearTreemap(targetElement);
   currentRoot.coords = calculateRootCoordinates(params);
   targetElement.appendChild(createRect(currentRoot));
   traverse(currentRoot, targetElement)
+}
+
+function resize(targetElement) {
+  clearTreemap(targetElement);
+  const targetElementPosition = targetElement.getBoundingClientRect();
+  const treemapContainer = cerateTreemapContainer(targetElement, targetElementPosition);
+  renderTreemap(treemapContainer, targetElementPosition);
 }
 
 export function create(jsonData) {
@@ -385,6 +398,10 @@ export function render(rootNode, targetElement) {
     removeTooltip();
     renderTreemap(treemapContainer, targetElementPosition); 
     updateToggleButtonText();
+  });
+
+  window.addEventListener('resize', () => { 
+    resize(targetElement);
   });
 
   renderTreemap(treemapContainer, targetElementPosition);
