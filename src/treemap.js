@@ -17,7 +17,7 @@ const expandedList = [];
 const marginTop = fontSize + 8;
 const toggleButtonHeight = fontSize + 20;
 
-var root, currentRoot = null;
+var root, currentRoot, count = null;
 
 function getJsonObject(data) {
   return JSON.parse(data || '{}');
@@ -263,6 +263,7 @@ function createRect(node) {
 
 function createNode(jsonData) {
   return {
+      id: count || 0,
       name: jsonData.hasOwnProperty('name') ? jsonData.name : null,
       parent: jsonData.parent || null,
       proportion: jsonData.proportion || 0,
@@ -275,17 +276,19 @@ function createNode(jsonData) {
 }
 
 function createSubnode(data, parentNode) {
+  count++;
   data.children.sort((first, second) => second.loc - first.loc);
   data.children.forEach((child) => {
-      const node = createNode({ 
+      const node = { 
+          id: count,
           name: child.name,
-          parent: parentNode,
+          parent: parentNode.id,
           proportion: child.loc,
           topOffset: 0,
           type: child.type,
           heatmap: child.value,
           children: []
-      });
+      };
       parentNode?.children?.push(node);
       createSubnode(child, node);
   });
@@ -300,22 +303,39 @@ function updateToggleButtonText() {
 }
 
 function isAlreadyExpanded(node) {
-  return expandedList.filter((item) => item.name == node.name).length > 0;
+  return expandedList.filter((item) => item.id == node.id).length > 0;
+}
+
+function getNodeById(id, node) {
+  if(node?.id == id){
+    return node;
+  } else {
+    if (node.children.length > 0) {
+      for(let i = 0; i < node.children.length; i++) {
+        let result = getNodeById(id, node.children[i]);
+        if (result != null) {
+          return result;
+        }
+      }
+    }
+    return null;
+  }
 }
 
 function expand(node) {
-  if(!node.parent || isAlreadyExpanded(node)) 
+  if(node.parent == null || isAlreadyExpanded(node)) 
     return;
-  currentRoot = node;
-  expandedList.push(node);
+  currentRoot = getNodeById(node.id, root);
+  expandedList.push({ id: node.id, name: node.name, proportion: node.proportion });
   window.dispatchEvent(events.ROOT_CHANGE);
 }
 
 function collapse() {
-  if(expandedList.length === 0)
+  if(expandedList.length == 0)
     return;
   expandedList.pop();
-  currentRoot = expandedList[expandedList.length - 1] ?? root;
+  const last = expandedList[expandedList.length - 1];
+  currentRoot = getNodeById(last ? last.id : root.id, root);
   window.dispatchEvent(events.ROOT_CHANGE);
 }
 
@@ -374,8 +394,10 @@ function resize(targetElement) {
 }
 
 export function create(jsonData) {
+  count = 0;
   const parsedData = getJsonObject(jsonData);
   const rootNode = createNode({
+      id: count,
       name: parsedData.name,
       proportion: parsedData.loc,
       children: [],
