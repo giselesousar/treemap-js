@@ -326,11 +326,30 @@ function getNodeById(id, node) {
   }
 }
 
+function getPathToNode(node) {
+  const path = [];
+  let parent = currentRoot.parent;
+
+  while(parent != null) {
+    let currentNode = getNodeById(parent, root);
+    if(isAlreadyExpanded(currentNode)) {
+      break;
+    }
+    path.push({ id: currentNode.id, name: currentNode.name, proportion: currentNode.proportion });
+    parent = currentNode.parent;
+  }
+  
+  path.reverse();
+  path.push({ id: node.id, name: node.name, proportion: node.proportion });
+
+  return path;
+}
+
 function expand(node) {
   if(node.parent == null || isAlreadyExpanded(node)) 
     return;
   currentRoot = getNodeById(node.id, root);
-  expandedList.push({ id: node.id, name: node.name, proportion: node.proportion });
+  expandedList.push(...getPathToNode(node));
   window.dispatchEvent(events.ROOT_CHANGE);
 }
 
