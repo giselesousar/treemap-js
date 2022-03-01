@@ -286,7 +286,7 @@ function createSubnode(data, parentNode) {
           proportion: child.loc,
           topOffset: 0,
           type: child.type,
-          heatmap: child.value,
+          heatmap: child.heatmap,
           children: []
       };
       parentNode?.children?.push(node);
@@ -402,7 +402,7 @@ export function create(jsonData) {
       proportion: parsedData.loc,
       children: [],
       type: parsedData.type,
-      heatmap: parsedData.value,
+      heatmap: parsedData.heatmap,
       topOffset: 0,
       parent: null
   });
