@@ -12,6 +12,10 @@ const modes = {
   HORIZONTAL: 0,
   VERTICAL: 1
 };
+const heatmap = {
+  min: 0,
+  max: 0
+};
 const margin = 5;
 const expandedList = [];
 const marginTop = fontSize + 8;
@@ -251,7 +255,7 @@ function removeTooltip() {
 }
 
 function createRect(node) {
-  const { fill, color } = calculateRectColor(root.proportion, node.proportion);
+  const { fill, color } = calculateRectColor(node.heatmap, heatmap);
   const container = createSvgElement('g');
   container.addEventListener('click', () => expand(node));
   container.addEventListener('mouseover', () => renderTooltip(node, fill, color));
@@ -341,7 +345,7 @@ function collapse() {
 
 function createToggleButton(params = {}) {
   const { top, left, right } = params;
-  const { fill, color } = calculateRectColor(root.proportion, root.proportion);
+  const { fill, color } = calculateRectColor(root.heatmap, heatmap);
   const container = createSvgElement('g');
 
   const path = createPathElement('path', fill, { top, left, right: right - left * margin, bottom: top + toggleButtonHeight });
@@ -357,6 +361,9 @@ function createToggleButton(params = {}) {
 
 function cerateTreemapContainer(targetElement, params = {}) {
   const { top, bottom, left, right } = params;
+
+  calculateMinMaxHeatmap();
+
   const svg = createSvgElement('svg');
   svg.setAttribute('id', 'treemap');
   svg.setAttribute('width', right + left);
@@ -391,6 +398,26 @@ function resize(targetElement) {
   const targetElementPosition = targetElement.getBoundingClientRect();
   const treemapContainer = cerateTreemapContainer(targetElement, targetElementPosition);
   renderTreemap(treemapContainer, targetElementPosition);
+}
+
+function calculateMinMaxHeatmap() {
+  const traverseForGetHeatmapValues = (node) => {
+    if(node?.heatmap) {
+      if(node.heatmap > heatmap.max) {
+        heatmap.max = node.heatmap;
+      } else if(node.heatmap < heatmap.min) {
+        heatmap.min = node.heatmap;
+      }
+    }
+
+    if (node.children.length > 0) {
+      node.children.forEach((child) => {
+        traverseForGetHeatmapValues(child);
+      });
+    }
+  }
+ 
+  traverseForGetHeatmapValues(currentRoot);
 }
 
 export function create(jsonData) {
