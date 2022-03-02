@@ -113,14 +113,22 @@ function calculateCoordinatesOfChildren(parent) {
         parentCoords: parent.coords,
         topOffset: parent.topOffset,
         previousCoords: coords, 
-        previousMode, 
-
+        previousMode,
         isFirst
       });
       previousMode = modes.VERTICAL;
       currentMaxVerticalLength -= childCoords.bottom - childCoords.top + margin;
       maxLengthOfLastVerticalRect = childCoords.right - childCoords.left;
       maxLengthOfLastHorizontalRect -= childCoords.bottom - childCoords.top + margin;
+    }
+
+    if(!shouldRenderRectangle(childCoords)){
+      coordinates.push({ top: 0, bottom: 0, right: 0, left: 0 });
+      while(children.length > 0) {
+        current = children.shift();
+        coordinates.push(childCoords);
+      }
+      break;
     }
 
     coordinates.push(childCoords);
@@ -132,7 +140,10 @@ function calculateCoordinatesOfChildren(parent) {
 }
 
 function shouldRenderRectangle(coords) {
-  return coords.bottom > coords.top && coords.right > coords.left && coords.bottom - coords.top >= limit && coords.right - coords.left >= limit;
+  return coords.bottom > coords.top && 
+    coords.right > coords.left && 
+    coords.bottom - coords.top >= limit && 
+    coords.right - coords.left >= limit
 }
 
 function traverse(node, element) {
