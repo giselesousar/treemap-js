@@ -21,150 +21,20 @@ const expandedList = [];
 const marginTop = fontSize + 8;
 const toggleButtonHeight = fontSize + 20;
 
+let rectangle = {data: []};
+
 var root, currentRoot, count = null;
 
 function getJsonObject(data) {
   return JSON.parse(data || '{}');
 }
 
-function calculateRootCoordinates(params = {}) {
-  const { top, bottom, left, right } = params;
-  return { top: top + toggleButtonHeight, bottom: bottom - top * margin, left, right: right - left * margin }
-}
-
-function calculateNextCoordinateVertically(params = {}) {
-  const { previousCoords, previousMode, proportion, parentProportion, parentCoords, maxLength, isFirst, maxLengthOfLastHorizontalRect, topOffset } = params;
-  let top, bottom, left, right = null;
-
-  if (!isFirst && previousMode != modes.VERTICAL ) {
-    left = previousCoords.right + margin;
-    top = previousCoords.top;
-    right = parentCoords.right - margin;
-    bottom = top + ((proportion * maxLengthOfLastHorizontalRect)/parentProportion);
-  } else { 
-    left = isFirst ? previousCoords.left + margin : previousCoords.left;
-    top = isFirst ? previousCoords.top + topOffset : previousCoords.bottom + margin;
-    right = isFirst ? previousCoords.right - margin : previousCoords.right;
-    bottom = maxLengthOfLastHorizontalRect > 0 ? top + ((proportion * maxLengthOfLastHorizontalRect)/parentProportion) :  top + ((proportion * maxLength)/parentProportion) - topOffset;
-  }
-  
-  return { left, top, right, bottom };
-}
-
-function calculateNextCoordinateHorizontally(params = {}) {
-  const { previousCoords, proportion, parentProportion, parentCoords, maxLength, previousMode, maxLengthOfLastVerticalRect, isFirst, topOffset } = params;
-  let top, bottom, left, right = null;
-
-  if (!isFirst && previousMode != modes.HORIZONTAL) {
-    left = previousCoords.left;
-    top = previousCoords.bottom + margin;
-    right = left + ((proportion * maxLengthOfLastVerticalRect)/parentProportion);
-    bottom = parentCoords.bottom - margin;
-  } else {
-    left = isFirst ? previousCoords.left + margin : previousCoords.right + margin;
-    top = isFirst ? previousCoords.top + topOffset : previousCoords.top;
-    right = maxLengthOfLastVerticalRect > 0 ? left + ((proportion * maxLengthOfLastVerticalRect)/parentProportion) : left + ((proportion * maxLength)/parentProportion) - margin;
-    bottom = isFirst ? previousCoords.bottom - margin : previousCoords.bottom;
-  }
-
-  return { left, top, right, bottom };
-}
-
-function calculateCoordinatesOfChildren(parent) {
-  let horizontalLength, verticalLength, childCoords, current, previousMode = null;
-  let maxLengthOfLastHorizontalRect, maxLengthOfLastVerticalRect = 0;
-  let coords = parent.coords;
-  let currentMaxHorizontalLength = coords.right - coords.left;
-  let currentMaxVerticalLength = coords.bottom - coords.top;
-  let currentParentProportion = parent.proportion;
-  let children = [...parent.children];
-  let isFirst = true;
-
-  const coordinates = [];
-
-  while (children.length > 0) {
-    horizontalLength = currentMaxHorizontalLength - margin;
-    verticalLength = currentMaxVerticalLength - margin;
-
-    current = children.shift();
-
-    if (horizontalLength > verticalLength) {
-      childCoords = calculateNextCoordinateHorizontally({ 
-        parentProportion: isFirst ? parent.proportion : currentParentProportion,
-        proportion: current.proportion, 
-        maxLength: horizontalLength, 
-        parentCoords: parent.coords,
-        maxLengthOfLastVerticalRect,
-        topOffset: parent.topOffset,
-        previousCoords: coords, 
-        previousMode, 
-        isFirst 
-      });
-      previousMode = modes.HORIZONTAL;
-      currentMaxHorizontalLength -= childCoords.right - childCoords.left + margin;
-      maxLengthOfLastVerticalRect -= childCoords.right - childCoords.left + margin;
-      maxLengthOfLastHorizontalRect = childCoords.bottom - childCoords.top;
-    } else {
-      childCoords = calculateNextCoordinateVertically({
-        parentProportion: isFirst ? parent.proportion : currentParentProportion, 
-        maxLengthOfLastHorizontalRect,
-        proportion: current.proportion, 
-        maxLength: verticalLength,
-        parentCoords: parent.coords,
-        topOffset: parent.topOffset,
-        previousCoords: coords, 
-        previousMode,
-        isFirst
-      });
-      previousMode = modes.VERTICAL;
-      currentMaxVerticalLength -= childCoords.bottom - childCoords.top + margin;
-      maxLengthOfLastVerticalRect = childCoords.right - childCoords.left;
-      maxLengthOfLastHorizontalRect -= childCoords.bottom - childCoords.top + margin;
-    }
-
-    if(!shouldRenderRectangle(childCoords)){
-      coordinates.push({ top: 0, bottom: 0, right: 0, left: 0 });
-      while(children.length > 0) {
-        current = children.shift();
-        coordinates.push(childCoords);
-      }
-      break;
-    }
-
-    coordinates.push(childCoords);
-    coords = childCoords;
-    isFirst = false;
-    currentParentProportion -= current.proportion;
-  }
-  return coordinates;
-}
-
-function shouldRenderRectangle(coords) {
-  return coords.bottom > coords.top && 
-    coords.right > coords.left && 
-    coords.bottom - coords.top >= limit && 
-    coords.right - coords.left >= limit
-}
-
-function traverse(node, element) {
-  const coords = calculateCoordinatesOfChildren(node);
-  if (node.children.length > 0) {
-      node.children.forEach((child, index) => {
-          child.coords = coords[index];
-          if(shouldRenderRectangle(coords[index])){
-            element.appendChild(createRect(child));
-            traverse(child, element);
-          }
-      });
-  }
-}
-
 function createPathElement(className, fill, params = {}) {
-  const { top, bottom, left, right } = params;
+  const { x, y, width, height } = params;
   const path = createSvgElement('path');
   path.classList.add(className);
   path.setAttribute('style', `fill: ${fill}`);
-  path.setAttribute('d', `M${left},${top} L${right},${top} L${right},${bottom} L${left},${bottom} Z`);
+  path.setAttribute('d', `M${x},${y} L${width + x},${y} L${width + x},${height + y} L${x},${height + y} Z`);
   return path; 
 }
 
@@ -178,7 +48,6 @@ function measureTextWidth(text) {
 
 function createTextElement(className, node, color, isNode=true) {
   const { coords, name } = node;
-  const height = coords.bottom - coords.top, width = coords.right - coords.left;
   const textTag = createSvgElement('text');
 
   textTag.classList.add(className);
@@ -187,11 +56,11 @@ function createTextElement(className, node, color, isNode=true) {
   textTag.textContent = name;
 
   const textPixelWidth = measureTextWidth(name) + margin;
-  let scale = width/textPixelWidth;
-  if (scale > 1 && fontSize > height || scale < 1 && scale * fontSize > height) {
+  let scale = coords.width/textPixelWidth;
+  if (scale > 1 && fontSize > coords.height || scale < 1 && scale * fontSize > coords.height) {
     scale = 0;
   }
-  const transform = scale > 1 ? `translate(${coords.left + margin}, ${coords.top + fontSize})` : `translate(${coords.left}, ${coords.top + scale*fontSize})scale(${scale})`;
+  const transform = scale > 1 ? `translate(${coords.x + margin}, ${coords.y + fontSize})` : `translate(${coords.x}, ${coords.y + scale*fontSize})scale(${scale})`;
   textTag.setAttribute('style', `font-size: ${fontSize}px; fill: ${color}; fill-opacity: ${scale < 0.3 ? 0 : 1}; white-space: pre;`);
   textTag.setAttribute('transform', transform);
   if (isNode) {
@@ -207,9 +76,10 @@ function renderTooltip(node, fillColor, textColor) {
     'label=' + name, 
     'value=' + proportion, 
     'type=' + type?.toLowerCase(), 
-    'heatmap=' + heatmap
+    'heatmap=' + Math.round(heatmap)
   ]
-  const maxRight = currentRoot.coords.right;
+  const maxWidth = currentRoot.coords.width + currentRoot.coords.x;
+  const maxHeight = currentRoot.coords.height;
   const maxTextPixelWidth = Math.max(...textContent.map(el => measureTextWidth(el)));
   const container = createSvgElement('g'), path = createSvgElement('path');
 
@@ -223,25 +93,28 @@ function renderTooltip(node, fillColor, textColor) {
     bottom: 0,
     left: 0,
     right: 0,
-    middle: coords.top + fontSize/2 
+    middle: bottom > maxHeight ? coords.height + coords.y - fontSize/2  : coords.y + fontSize/2 
   }
 
   top = triangle.middle - (textContent.length * fontSize)/2 - margin;
-  bottom =  triangle.middle + (textContent.length * fontSize)/2 + margin;
-  left = coords.right;
+  bottom = triangle.middle + (textContent.length * fontSize)/2 + margin;
+  left = coords.width + coords.x;
   right = left + maxTextPixelWidth;
-  middleOfTooltip = (bottom - top) / 2;
 
-  triangle.top = top + middleOfTooltip*0.8;
-  triangle.bottom = bottom - middleOfTooltip*0.8;
+  top = bottom > maxHeight ? triangle.middle - (textContent.length * fontSize) - margin : top;
+  bottom = bottom > maxHeight ? triangle.middle + margin : bottom;
 
-  if (right > maxRight) {
-    right = coords.right - triangle.width;
+  middleOfTooltip = top + (bottom - top) / 2 < coords.y ? (bottom - top) * 0.82 : (bottom - top) / 2;
+
+  triangle.top = top + (bottom - top) / 2 < coords.y ? bottom - 15 : top + middleOfTooltip*0.8;
+  triangle.bottom = top + (bottom - top) / 2 < coords.y ? bottom - 8 : bottom - middleOfTooltip*0.8;
+
+  if (right > maxWidth) {
+    right = coords.width + coords.x - triangle.width;
     left = right - maxTextPixelWidth - triangle.width;
     triangle.right = right + triangle.width;
     path.setAttribute('d', `M${left},${top} L${right},${top} L${right},${triangle.top} L${triangle.right},${top + middleOfTooltip} L${right},${triangle.bottom} L${right},${bottom} L${left},${bottom} L${left},${top}Z`);
   } else {
-    left = coords.right;
     triangle.left = left - triangle.width;
     path.setAttribute('d', `M${left},${top} L${right},${top} L${right},${bottom} L${left},${bottom} L${left},${triangle.bottom} L${triangle.left},${top + middleOfTooltip} L${left},${triangle.top} L${left},${top}Z`);
   }
@@ -268,7 +141,9 @@ function removeTooltip() {
 function createRect(node) {
   const { fill, color } = calculateRectColor(node.heatmap, heatmap);
   const container = createSvgElement('g');
-  container.addEventListener('click', () => expand(node));
+  if(node.type === 'DIR') {
+    container.addEventListener('click', () => expand(node));
+  }
   container.addEventListener('mouseover', () => renderTooltip(node, fill, color));
   container.addEventListener('mouseout', () => removeTooltip());
   container.appendChild(createPathElement('path', fill, node.coords));
@@ -286,7 +161,8 @@ function createNode(jsonData) {
       topOffset: 0,
       type: jsonData.type || null,
       heatmap: jsonData.heatmap || null,
-      coords: jsonData.coords || {}
+      coords: jsonData.coords || {},
+      scaledProportion: 0
     }
 }
 
@@ -302,7 +178,8 @@ function createSubnode(data, parentNode) {
           topOffset: 0,
           type: child.type,
           heatmap: child.heatmap,
-          children: []
+          children: [],
+          scaledProportion: 0
       };
       parentNode?.children?.push(node);
       createSubnode(child, node);
@@ -312,7 +189,7 @@ function createSubnode(data, parentNode) {
 function updateToggleButtonText() {
   const textElement = getElementById('collapse-button-text');
   const textContent = expandedList.map((node) => node.name);
-  textContent.unshift('all');
+  textContent.unshift(root.name);
   const totalSize = textContent.length == 1 ? root.proportion : expandedList[expandedList.length - 1].proportion;
   textElement.textContent = textContent.join(' / ') + ': ' + totalSize;
 }
@@ -360,7 +237,7 @@ function expand(node) {
   if(node.parent == null || isAlreadyExpanded(node)) 
     return;
   currentRoot = getNodeById(node.id, root);
-  expandedList.push(...getPathToNode(node));
+  expandedList.push({ id: node.id, name: node.name, proportion: node.proportion });
   window.dispatchEvent(events.ROOT_CHANGE);
 }
 
@@ -370,19 +247,23 @@ function collapse() {
   expandedList.pop();
   const last = expandedList[expandedList.length - 1];
   currentRoot = getNodeById(last ? last.id : root.id, root);
+  while(currentRoot.children.length === 1) {
+    expandedList.pop();
+    const last = expandedList[expandedList.length - 1];
+    currentRoot = getNodeById(last ? last.id : root.id, root);
+  }
   window.dispatchEvent(events.ROOT_CHANGE);
 }
 
 function createToggleButton(params = {}) {
-  const { top, left, right } = params;
-  const { fill, color } = calculateRectColor(root.heatmap, heatmap);
+  const { x, y, width } = params;
   const container = createSvgElement('g');
 
-  const path = createPathElement('path', fill, { top, left, right: right - left * margin, bottom: top + toggleButtonHeight });
+  const path = createPathElement('path', 'hsl(240, 100%, 92%)', { y, x, width: width, height: y + toggleButtonHeight });
   path.addEventListener('click', () => collapse());
   container.appendChild(path);
 
-  const text = createTextElement('text', { name: 'all: ' + root.proportion, coords: { top: top + (toggleButtonHeight - fontSize)/2, right, left } }, color, false);
+  const text = createTextElement('text', { name: root.name + ': ' + root.proportion, coords: { y: y + (toggleButtonHeight - fontSize)/2, width, x } }, 'rgb(0,0,0)', false);
   text.setAttribute('id', 'collapse-button-text');
   container.appendChild(text);
 
@@ -391,8 +272,6 @@ function createToggleButton(params = {}) {
 
 function cerateTreemapContainer(targetElement, params = {}) {
   const { top, bottom, left, right } = params;
-
-  calculateMinMaxHeatmap();
 
   const svg = createSvgElement('svg');
   svg.setAttribute('id', 'treemap');
@@ -416,11 +295,147 @@ function clearTreemap(element) {
   }
 }
 
+function getMinWidth() {
+  if (rectangle.height > rectangle.width) {
+    return { value: rectangle.width, vertical: false };
+  }
+  return { value: rectangle.height, vertical: true };
+}
+
+function saveCoords(id, coords) {
+  if(currentRoot?.id == id){
+    return currentRoot;
+  } else {
+    if (currentRoot.children.length > 0) {
+      for(let i = 0; i < currentRoot.children.length; i++) {
+        let result = getNodeById(id, currentRoot.children[i]);
+        if (result != null) {
+          result.coords = coords;
+        }
+      }
+    }
+  }
+}
+
+const layoutRow = (row, width, vertical, element) => {
+  if(row.length === 0) {
+    return;
+  }
+  const rowHeight = row.map(each => each.scaledProportion).reduce((a,b) => a + b, 0) / width;
+  row.forEach((rowItem) => {
+    const rowWidth = rowItem.scaledProportion / rowHeight;
+    let data;
+    if (vertical) {
+      data = {
+        x: rectangle.x,
+        y: rectangle.y,
+        width: rowHeight,
+        height: rowWidth,
+      };
+      rectangle.y += rowWidth;
+    } else {
+      data = {
+        x: rectangle.x,
+        y: rectangle.y,
+        width: rowWidth,
+        height: rowHeight,
+      };
+      rectangle.x += rowWidth;
+    }
+
+    saveCoords(rowItem.id, data);
+    element.appendChild(createRect({ ...rowItem, coords: data }));
+  });
+
+  if (vertical) {
+    rectangle.x += rowHeight;
+    rectangle.y -= width;
+    rectangle.width -= rowHeight;
+  } else {
+    rectangle.x -= width;
+    rectangle.y += rowHeight;
+    rectangle.height -= rowHeight;
+  }
+};
+
+function worstRatio(row, width) {
+  const values = row.map(each => each.scaledProportion);
+  const sum = values.reduce((a, b) => a + b, 0);
+  const rowMax = Math.max(...values);
+  const rowMin = Math.min(...values);
+  return Math.max(
+    (width ** 2 * rowMax) / sum ** 2,
+    sum ** 2 / (width ** 2 * rowMin)
+  );
+}
+
+const layoutLastRow = (rows, children, width, element) => {
+  const { vertical } = getMinWidth();
+  layoutRow(rows, width, vertical, element);
+  layoutRow(children, width, vertical, element);
+};
+
+const squarify = (children, row, width, element) => {
+
+  if(children.length === 0){
+    return;
+  }
+
+  if (children.length === 1) {
+    return layoutLastRow(row, children, width, element);
+  }
+
+  const rowWithChild = [...row, children[0]];
+
+  if (
+    row.length === 0 ||
+    worstRatio(row, width) >= worstRatio(rowWithChild, width)
+  ) {
+    children.shift();
+    return squarify(children, rowWithChild, width, element);
+  }
+  layoutRow(row, width, getMinWidth().vertical, element);
+  return squarify(children, [], getMinWidth().value, element);
+};
+
 function renderTreemap(targetElement, params) {
   clearTreemap(targetElement);
-  currentRoot.coords = calculateRootCoordinates(params);
-  targetElement.appendChild(createRect(currentRoot));
-  traverse(currentRoot, targetElement)
+  calculateMinMaxHeatmap();
+
+  let flag = false;
+
+  while(currentRoot.children.length === 1) {
+    if(currentRoot.children[0].children.length === 0) {
+      break;
+    }
+    flag = true;
+    currentRoot = currentRoot.children[0];
+    expandedList.push({ id: currentRoot.id, name: currentRoot.name, proportion: currentRoot.proportion });
+  }
+
+  if (flag) {
+    updateToggleButtonText();
+    renderTreemap(targetElement, params);
+    return;
+  }
+
+  const children = [...currentRoot.children];
+  const totalValue = children.map((child) => child.proportion).reduce((a, b) => a + b, 0);
+  const width = params.width;
+  const height = params.height - toggleButtonHeight;
+  currentRoot.coords = params;
+
+  rectangle = {
+    ...rectangle, 
+    x: params.x,
+    y: params.y + toggleButtonHeight,
+    width,
+    height
+  };
+
+  const scaledData = children.map((child) => { return {...child, scaledProportion: (child.proportion * width * height) / totalValue} } );
+
+  squarify(scaledData, [], getMinWidth().value, targetElement);
 }
 
 function resize(targetElement) {
@@ -431,24 +446,19 @@ function resize(targetElement) {
 }
 
 function calculateMinMaxHeatmap() {
-  const traverseForGetHeatmapValues = (node) => {
-    if(node?.heatmap) {
-      if(node.heatmap > heatmap.max) {
-        heatmap.max = node.heatmap;
-      } else if(node.heatmap < heatmap.min) {
-        heatmap.min = node.heatmap;
+  heatmap.max = 0; heatmap.min = 0;
+  if (currentRoot.children.length > 0) {
+    currentRoot.children.forEach((child) => {
+        if(child?.heatmap) {
+          if(child.heatmap > heatmap.max) {
+            heatmap.max = child.heatmap;
+          } else if(child.heatmap < heatmap.min) {
+            heatmap.min = child.heatmap;
+          }
       }
-    }
-
-    if (node.children.length > 0) {
-      node.children.forEach((child) => {
-        traverseForGetHeatmapValues(child);
-      });
-    }
+    });
   }
- 
-  traverseForGetHeatmapValues(currentRoot);
-}
+ }
 
 export function create(jsonData) {
   count = 0;
@@ -461,7 +471,8 @@ export function create(jsonData) {
       type: parsedData.type,
       heatmap: parsedData.heatmap,
       topOffset: 0,
-      parent: null
+      parent: null,
+      scaledProportion: 0
   });
   createSubnode(parsedData, rootNode);
   return rootNode;

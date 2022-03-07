@@ -2,6 +2,8 @@
 
 * {
     user-select: none;
+    padding: 0;
+    margin: 0;
 }
 .path {
     stroke-width: 1.5; 
@@ -21,4 +23,8 @@
     fill-opacity: 1;
     font-family: 'Roboto', sans-serif;
     cursor: pointer;
+}
+
+.tooltip {
+    pointer-events: none;
 }
