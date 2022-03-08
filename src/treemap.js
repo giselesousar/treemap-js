@@ -391,8 +391,6 @@ function traverse(node, element) {
     height: height
   };
 
-  parentRectangle = {...rectangle, topOffset: node.topOffset};
-
   squarify(children, [], getMinWidth().value, element);
 
   node.children.forEach((child) => {
