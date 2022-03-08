@@ -4,13 +4,8 @@ import './treemap.scss';
 
 const fontSize = 14;
 const fontFamily = 'Roboto';
-const limit = 2.2;
 const events = {
   ROOT_CHANGE: new Event('root-change')
-};
-const modes = {
-  HORIZONTAL: 0,
-  VERTICAL: 1
 };
 const heatmap = {
   min: 0,
@@ -226,7 +221,7 @@ function getPathToNode(node) {
     path.push({ id: currentNode.id, name: currentNode.name, proportion: currentNode.proportion });
     parent = currentNode.parent;
   }
-  
+  path.pop();
   path.reverse();
   path.push({ id: node.id, name: node.name, proportion: node.proportion });
 
@@ -237,7 +232,7 @@ function expand(node) {
   if(node.parent == null || isAlreadyExpanded(node)) 
     return;
   currentRoot = getNodeById(node.id, root);
-  expandedList.push({ id: node.id, name: node.name, proportion: node.proportion });
+  expandedList.push(...getPathToNode(node));
   window.dispatchEvent(events.ROOT_CHANGE);
 }
 
@@ -247,11 +242,6 @@ function collapse() {
   expandedList.pop();
   const last = expandedList[expandedList.length - 1];
   currentRoot = getNodeById(last ? last.id : root.id, root);
-  while(currentRoot.children.length === 1) {
-    expandedList.pop();
-    const last = expandedList[expandedList.length - 1];
-    currentRoot = getNodeById(last ? last.id : root.id, root);
-  }
   window.dispatchEvent(events.ROOT_CHANGE);
 }
 
@@ -302,21 +292,6 @@ function getMinWidth() {
   return { value: rectangle.height, vertical: true };
 }
 
-function saveCoords(id, coords) {
-  if(currentRoot?.id == id){
-    return currentRoot;
-  } else {
-    if (currentRoot.children.length > 0) {
-      for(let i = 0; i < currentRoot.children.length; i++) {
-        let result = getNodeById(id, currentRoot.children[i]);
-        if (result != null) {
-          result.coords = coords;
-        }
-      }
-    }
-  }
-}
-
 const layoutRow = (row, width, vertical, element) => {
   if(row.length === 0) {
     return;
@@ -343,8 +318,10 @@ const layoutRow = (row, width, vertical, element) => {
       rectangle.x += rowWidth;
     }
 
-    saveCoords(rowItem.id, data);
-    element.appendChild(createRect({ ...rowItem, coords: data }));
+    rowItem.coords = data;
+    if(data.y < data.height + data.y && data.x < data.width + data.x) {
+      element.appendChild(createRect(rowItem));
+    }
   });
 
   if (vertical) {
@@ -398,44 +375,33 @@ const squarify = (children, row, width, element) => {
   return squarify(children, [], getMinWidth().value, element);
 };
 
-function renderTreemap(targetElement, params) {
-  clearTreemap(targetElement);
-  calculateMinMaxHeatmap();
-
-  let flag = false;
-
-  while(currentRoot.children.length === 1) {
-    if(currentRoot.children[0].children.length === 0) {
-      break;
-    }
-    flag = true;
-    currentRoot = currentRoot.children[0];
-    expandedList.push({ id: currentRoot.id, name: currentRoot.name, proportion: currentRoot.proportion });
-  }
-
-  if (flag) {
-    updateToggleButtonText();
-    renderTreemap(targetElement, params);
-    return;
-  }
-
-  const children = [...currentRoot.children];
-  const totalValue = children.map((child) => child.proportion).reduce((a, b) => a + b, 0);
-  const width = params.width;
-  const height = params.height - toggleButtonHeight;
-  currentRoot.coords = params;
+function traverse(node, element) {
+  const isRoot = node.id === currentRoot.id;
+  const totalValue = node.children.map((child) => child.proportion).reduce((a, b) => a + b, 0);
+  const width = isRoot ? node.coords.width : node.coords.width - 2*margin;
+  const height = isRoot ? node.coords.height - toggleButtonHeight : node.coords.height - node.topOffset - margin;
+  node.children.forEach((child) => { child.scaledProportion = (child.proportion * width * height) / totalValue });
+  const children = [...node.children];
 
   rectangle = {
     ...rectangle, 
-    x: params.x,
-    y: params.y + toggleButtonHeight,
-    width,
-    height
+    x: isRoot ? node.coords.x : node.coords.x + margin,
+    y: isRoot ? node.coords.y + toggleButtonHeight : node.coords.y + node.topOffset,
+    width: width,
+    height: height
   };
 
-  const scaledData = children.map((child) => { return {...child, scaledProportion: (child.proportion * width * height) / totalValue} } );
+  squarify(children, [], getMinWidth().value, element);
 
-  squarify(scaledData, [], getMinWidth().value, targetElement);
+  node.children.forEach((child) => {
+    traverse(child, element);
+  })
+}
+
+function renderTreemap(targetElement, params) {
+  clearTreemap(targetElement);
+  currentRoot.coords = params;
+  traverse(currentRoot, targetElement);
 }
 
 function resize(targetElement) {
@@ -446,19 +412,24 @@ function resize(targetElement) {
 }
 
 function calculateMinMaxHeatmap() {
-  heatmap.max = 0; heatmap.min = 0;
-  if (currentRoot.children.length > 0) {
-    currentRoot.children.forEach((child) => {
-        if(child?.heatmap) {
-          if(child.heatmap > heatmap.max) {
-            heatmap.max = child.heatmap;
-          } else if(child.heatmap < heatmap.min) {
-            heatmap.min = child.heatmap;
-          }
+  const traverseForGetHeatmapValues = (node) => {
+    if(node?.heatmap) {
+      if(node.heatmap > heatmap.max) {
+        heatmap.max = node.heatmap;
+      } else if(node.heatmap < heatmap.min) {
+        heatmap.min = node.heatmap;
       }
-    });
+    }
+
+    if (node.children.length > 0) {
+      node.children.forEach((child) => {
+        traverseForGetHeatmapValues(child);
+      });
+    }
   }
- }
+ 
+  traverseForGetHeatmapValues(currentRoot);
+}
 
 export function create(jsonData) {
   count = 0;
@@ -483,6 +454,7 @@ export function render(rootNode, targetElement) {
   root = rootNode;
   const targetElementPosition = targetElement.getBoundingClientRect();
   const treemapContainer = cerateTreemapContainer(targetElement, targetElementPosition);
+  calculateMinMaxHeatmap();
 
   window.addEventListener('root-change', () => { 
     removeTooltip();
