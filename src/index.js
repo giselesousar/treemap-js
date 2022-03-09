@@ -1,6 +1,6 @@
 import { createElement, createSvgElement, getElementById } from './utils/dom';
 import { calculateRectColor } from './utils/heatmap';
-import './treemap.scss';
+import './styles.scss';
 
 const fontSize = 14;
 const fontFamily = 'Roboto';
@@ -390,8 +390,6 @@ function traverse(node, element) {
     width: width,
     height: height
   };
-
-  parentRectangle = {...rectangle, topOffset: node.topOffset};
 
   squarify(children, [], getMinWidth().value, element);
 
