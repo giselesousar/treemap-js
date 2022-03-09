@@ -1,18 +1,16 @@
 const path = require('path');
 
 module.exports = {
-  mode: 'development',
-  entry: './src/treemap.js',
+  mode: "development",
+  entry: "./src/index.js",
   output: {
-    filename: 'treemap.js',
-    library: {
-      name: 'treemap',
-      type: 'umd'
-    },
-    path: path.resolve(__dirname, 'dist'),
+    filename: "treemap.bundle.js",
+    library: "treemap",
+    libraryTarget: "umd",
+    path: path.resolve(__dirname, "dist"),
   },
   devServer: {
-    static: path.join(__dirname, 'demo'),
+    static: path.join(__dirname, "demo"),
     port: 3000,
   },
   module: {

@@ -1,6 +1,6 @@
 import { createElement, createSvgElement, getElementById } from './utils/dom';
 import { calculateRectColor } from './utils/heatmap';
-import './treemap.scss';
+import './styles.scss';
 
 const fontSize = 14;
 const fontFamily = 'Roboto';
