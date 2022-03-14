@@ -8,7 +8,7 @@ pip install pydriller
 ```
 set environment variables for the url of the repository to be analyzed and the metric used for generating the heatmap (frequency | complexity | loc_changes)
 ```
-export REPOSITORY_URL=https://github.com/giselesousar/treemap-js 
+export REPOSITORY_URL=https://github.com/apache/cassandra
 export HEATMAP_METRIC=COMPLEXITY 
 ```
 run in /scripts directory
@@ -23,7 +23,7 @@ include treemap.bundle.js from dist directory in your html page
 get json data and render treemap into DOM
 ```js
 // import JSON
-import data from '/scripts/treemap.json';
+import data from '/scripts/cassandra.json';
 
 // create json tree object
 const tree = treemap.create(data);
@@ -43,7 +43,7 @@ treemap.render(tree, document.querySelector('.root'));
 
     <script type="text/javascript" src="treemap.bundle.js"></script>
     <script type="text/javascript">
-      fetch('example.json')
+      fetch('cassandra.json')
       .then((res)=> {
         return res.text();
       })
@@ -59,7 +59,7 @@ treemap.render(tree, document.querySelector('.root'));
 </html>
 ```
 ### Output
-![Treemap](img/example.png)
+![Treemap](img/cassandra_root_2.png)
 
 ### For development install dependencies and run scripts
 ```
