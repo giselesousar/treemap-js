@@ -1,5 +1,36 @@
-# treemap-js
+# Treemap-js
 
+### How to use
+#### Generate JSON
+install dependencies 
+```
+pip install pydriller
+```
+set environment variables for the url of the repository to be analyzed and the metric used for generating the heatmap (frequency | complexity | loc_changes)
+```
+export REPOSITORY_URL=https://github.com/apache/cassandra
+export HEATMAP_METRIC=COMPLEXITY 
+```
+run in /scripts directory
+```
+python json.py
+```
+#### Render treemap
+include treemap.bundle.js from dist directory in your html page
+```html
+<script src="treemap.bundle.js"></script>
+```
+get json data and render treemap into DOM
+```js
+// import JSON
+import data from '/scripts/cassandra.json';
+
+// create json tree object
+const tree = treemap.create(data);
+
+// render treemap into dom element
+treemap.render(tree, document.querySelector('.root'));
+```
 ### Example 
 ```html
 <!DOCTYPE html>
@@ -8,11 +39,11 @@
     <title>Treemap</title>
   </head>
   <body>
-    <div class="root" style="height: 100vh; width: 100vw;"></div>
+    <div class="root" style="height: 100vh"></div>
 
-    <script type="text/javascript" src="treemap.js"></script>
+    <script type="text/javascript" src="treemap.bundle.js"></script>
     <script type="text/javascript">
-      fetch('example.json')
+      fetch('cassandra.json')
       .then((res)=> {
         return res.text();
       })
@@ -28,7 +59,7 @@
 </html>
 ```
 ### Output
-![Treemap](img/example.png)
+![Treemap](img/cassandra_root_2.png)
 
 ### For development install dependencies and run scripts
 ```
