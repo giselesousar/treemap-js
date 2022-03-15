@@ -15,6 +15,8 @@ const margin = 5;
 const expandedList = [];
 const marginTop = fontSize + 8;
 const toggleButtonHeight = fontSize + 20;
+const heatmapScaleWidth = 30;
+const heatmapScalePadding = 30;
 
 let rectangle = {data: []};
 
@@ -260,14 +262,81 @@ function createToggleButton(params = {}) {
   return container;
 }
 
+function createHeatmapScale(params = {}) {
+  const { y, width, height } = params;
+
+  const container = createSvgElement('g');
+  const containerText = createSvgElement('g');
+  const defs = createSvgElement("defs");
+  const linearGradient = createSvgElement("linearGradient");
+
+  linearGradient.setAttribute("id", "Gradient");
+  linearGradient.setAttribute("x1", "0");
+  linearGradient.setAttribute("x2", "0");
+  linearGradient.setAttribute("y1", "0");
+  linearGradient.setAttribute("y1", "1");
+
+  const points = [5, 20, 30, 40, 50, 60, 70, 80, 90];
+
+  points.forEach((point, index) => {
+    let stop = createSvgElement("stop");
+
+    stop.setAttribute("offset", `${point}%`);
+    stop.setAttribute("stop-color", `hsl(240,100%,${points[points.length - index - 1]}%)`); 
+
+    linearGradient.appendChild(stop);
+  });
+
+  defs.appendChild(linearGradient);
+  container.appendChild(defs);
+
+  const scaleParams = {
+    y: y + toggleButtonHeight + heatmapScalePadding, 
+    x: width + 15, 
+    width: heatmapScaleWidth, 
+    height: height - (y + toggleButtonHeight + 2*heatmapScalePadding) 
+  }
+
+  const path = createPathElement('scale', "url('#Gradient')", scaleParams);
+  container.appendChild(path);
+
+  const diff = heatmap.max - heatmap.min;
+  const textValues = [heatmap.min, Math.round(diff/4), Math.round(diff/2), Math.round(diff/2 + diff/4), heatmap.max];
+  
+  textValues.forEach((value) => {
+
+    const proportion = ((value - heatmap.min) / (heatmap.max - heatmap.min));
+
+    let text = createSvgElement('text');
+
+    text.classList.add('text-scale');
+    text.setAttribute('x', 0);
+    text.setAttribute('y', 0);
+    text.textContent = value;
+   
+    const y = (1 - proportion)*(scaleParams.height);
+
+    text.setAttribute('style', `font-size: ${fontSize - 3}px; fill: rgb(0,0,0); fill-opacity: 1; white-space: pre;`);
+    text.setAttribute('transform', `translate(${scaleParams.x + scaleParams.width + margin}, ${y == 0 ? scaleParams.y + margin : y + scaleParams.y})`);
+
+    containerText.appendChild(text);
+  })
+
+  container.appendChild(containerText);
+  return container;
+}
+
 function cerateTreemapContainer(targetElement, params = {}) {
   const { top, bottom, left, right } = params;
+
+  params.width = params.width - heatmapScaleWidth - 2*heatmapScalePadding;
 
   const svg = createSvgElement('svg');
   svg.setAttribute('id', 'treemap');
   svg.setAttribute('width', right + left);
   svg.setAttribute('height', bottom + top);
 
+  svg.appendChild(createHeatmapScale(params));
   svg.appendChild(createToggleButton(params));
 
   const container = createSvgElement('g');
@@ -452,9 +521,9 @@ export function create(jsonData) {
 export function render(rootNode, targetElement) {
   currentRoot = rootNode; 
   root = rootNode;
+  calculateMinMaxHeatmap();
   const targetElementPosition = targetElement.getBoundingClientRect();
   const treemapContainer = cerateTreemapContainer(targetElement, targetElementPosition);
-  calculateMinMaxHeatmap();
 
   window.addEventListener('root-change', () => { 
     removeTooltip();
