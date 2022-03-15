@@ -3,6 +3,7 @@ import json
 from enum import Enum
 from pathlib import Path
 from pydriller import Repository
+from subprocess import check_output
 
 class Type(Enum):
   DIR = 0
@@ -123,11 +124,11 @@ def create_tree(name, list_of_files_and_directories, list_locs_of_files, dict_of
 
     if os.path.isdir(key):
       key_type = Type.DIR
-      parent = os.path.dirname(key).split('/')
+      parent = os.path.dirname(key).split('/')[-1]
       heatmap = 0
     else:
       key_type = Type.FILE
-      parent = str(Path(key).parent).split('/')
+      parent = str(Path(key).parent).split('/')[-1]
       if key in list_locs_of_files:
         loc = list_locs_of_files[key]
       if last_name in dict_of_heatmap_metric:
@@ -160,15 +161,8 @@ def get_list_of_files_loc(name):
     return list_locs_of_files
 
 def get_list_of_files_and_directories(name):
-  list_of_files_and_directories = []
-  for dirname, dirnames, filenames in os.walk(name):
-    for subdirname in dirnames:
-        list_of_files_and_directories.append(os.path.join(dirname, subdirname))
-
-    for filename in filenames:
-      if not should_ignore(filename):
-        list_of_files_and_directories.append(os.path.join(dirname, filename))
-  return list_of_files_and_directories
+  list_of_files_and_directories = check_output(f"cd {name} && tree -i -f", shell=True).decode("utf-8").splitlines()
+  return [each.replace('./', name + '/') for each in list_of_files_and_directories][1:-2]
 
 def analize_repository(name, heatmap_metric):
   print("Analyzing...")
