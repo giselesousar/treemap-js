@@ -5,7 +5,7 @@ export function calculateRectColor(rectHeatmap, heatmap) {
     const diff = heatmap.max - heatmap.min;
     let lightness = 95;
     if(diff > 0) {
-        const value = ((rectHeatmap - heatmap.min) / (heatmap.max - heatmap.min));
+        const value = ((rectHeatmap - heatmap.min) / diff);
         lightness = (1 - value) * lightness;
     }
     return {
