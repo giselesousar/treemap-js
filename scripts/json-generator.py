@@ -124,11 +124,9 @@ def create_tree(name, list_of_files_and_directories, list_locs_of_files, dict_of
 
     if os.path.isdir(key):
       key_type = Type.DIR
-      parent = os.path.dirname(key).split('/')[-1]
       heatmap = 0
     else:
       key_type = Type.FILE
-      parent = str(Path(key).parent).split('/')[-1]
       if key in list_locs_of_files:
         loc = list_locs_of_files[key]
       if last_name in dict_of_heatmap_metric:
