@@ -13,7 +13,7 @@ export HEATMAP_METRIC=COMPLEXITY
 ```
 run in /scripts directory
 ```
-python json.py
+python create_json.py
 ```
 #### Render treemap
 include treemap.bundle.js from dist directory in your html page
