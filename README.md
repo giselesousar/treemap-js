@@ -6,14 +6,17 @@ install dependencies
 ```
 pip install pydriller
 ```
+```
+sudo apt install tree
+```
 set environment variables for the url of the repository to be analyzed and the metric used for generating the heatmap (frequency | complexity | loc_changes)
 ```
 export REPOSITORY_URL=https://github.com/apache/cassandra
 export HEATMAP_METRIC=COMPLEXITY 
 ```
-run in /scripts directory
+run with sudo privileges in /scripts directory
 ```
-python create_json.py
+sudo python3 create_json.py
 ```
 #### Render treemap
 include treemap.bundle.js from dist directory in your html page
@@ -48,8 +51,8 @@ treemap.render(tree, document.querySelector('.root'));
         return res.text();
       })
       .then((data) => {
-        const tree = treemap.create(data);
-        treemap.render(tree, document.querySelector('.root'));
+        const heatmapMetric = 'FC';
+        treemap.render(data, document.querySelector('.root'), heatmapMetric);
       })
       .catch((err) => {
         console.log(err);
