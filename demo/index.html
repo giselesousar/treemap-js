@@ -12,8 +12,8 @@
         return res.text();
       })
       .then((data) => {
-        const tree = treemap.create(data);
-        treemap.render(tree, document.querySelector('.root'));
+        const heatmapMetricName = 'FC';
+        treemap.render(data, document.querySelector('.root'), heatmapMetricName);
       })
       .catch((err) => {
         console.log(err);

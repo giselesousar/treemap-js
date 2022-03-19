@@ -17,6 +17,7 @@ const marginTop = fontSize + 8;
 const toggleButtonHeight = fontSize + 20;
 const heatmapScaleWidth = 30;
 const heatmapScalePadding = 30;
+let heatmapScaleTitle = '';
 
 let rectangle = {data: []};
 
@@ -269,6 +270,7 @@ function createHeatmapScale(params = {}) {
   const containerText = createSvgElement('g');
   const defs = createSvgElement("defs");
   const linearGradient = createSvgElement("linearGradient");
+  const title = createSvgElement('text');
 
   linearGradient.setAttribute("id", "Gradient");
   linearGradient.setAttribute("x1", "0");
@@ -296,6 +298,15 @@ function createHeatmapScale(params = {}) {
     width: heatmapScaleWidth, 
     height: height - (y + toggleButtonHeight + 2*heatmapScalePadding) 
   }
+
+  title.classList.add('text-scale');
+  title.setAttribute('x', scaleParams.x + 20);
+  title.setAttribute('y', scaleParams.y - 20);
+  title.setAttribute('text-anchor', 'middle');
+  title.setAttribute('style', `font-size: ${fontSize - 3}px; fill: rgb(0,0,0); fill-opacity: 1; white-space: pre;`);
+  title.textContent = heatmapScaleTitle;
+
+  container.appendChild(title)
 
   const path = createPathElement('scale', "url('#Gradient')", scaleParams);
   container.appendChild(path);
@@ -500,7 +511,7 @@ function calculateMinMaxHeatmap() {
   traverseForGetHeatmapValues(currentRoot);
 }
 
-export function create(jsonData) {
+function create(jsonData) {
   count = 0;
   const parsedData = getJsonObject(jsonData);
   const rootNode = createNode({
@@ -518,7 +529,11 @@ export function create(jsonData) {
   return rootNode;
 }
 
-export function render(rootNode, targetElement) {
+export function render(jsonData, targetElement, heatmapMetricName) {
+
+  const rootNode = create(jsonData);
+
+  heatmapScaleTitle = heatmapMetricName;
   currentRoot = rootNode; 
   root = rootNode;
   calculateMinMaxHeatmap();
@@ -539,6 +554,5 @@ export function render(rootNode, targetElement) {
 }
 
 export default {
-    create,
     render
 }
