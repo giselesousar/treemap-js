@@ -9,7 +9,7 @@ pip install pydriller
 ```
 sudo apt install tree
 ```
-set environment variables for the url of the repository to be analyzed and the metric used for generating the heatmap (frequency | complexity | loc_changes)
+set environment variables for the url of the repository to be analyzed and the metric used for generating the heatmap (frequency | complexity | loc_changes | composition)
 ```
 export REPOSITORY_URL=https://github.com/apache/cassandra
 export HEATMAP_METRIC=COMPLEXITY 
