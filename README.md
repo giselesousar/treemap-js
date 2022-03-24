@@ -16,7 +16,7 @@ export HEATMAP_METRIC=COMPLEXITY
 ```
 run with sudo privileges in /scripts directory
 ```
-sudo python3 create_json.py
+sudo python3 json-generator.py
 ```
 #### Render treemap
 include treemap.bundle.js from dist directory in your html page
