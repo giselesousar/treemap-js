@@ -13,6 +13,7 @@ class HeatmapMetric(Enum):
   FREQUENCY = 0
   COMPLEXITY = 1
   LOC_CHANGES = 2
+  COMPOSITION = 3
 
 class Node:
   def __init__(self, name, loc, heatmap, node_type, depth, children = []):
@@ -101,6 +102,18 @@ def get_files_cyclomatic_complexity_in_commits(name):
       complexity[modified_file.filename] = 0 if modified_file.complexity is None else modified_file.complexity
   return complexity
 
+def get_composition(name):
+  file_frequency = get_files_frequency_in_commits(name)
+  number_of_line_changes = get_number_of_lines_of_code_changes_in_commits(name)
+  complexity = get_files_cyclomatic_complexity_in_commits(name)
+  composition = {}
+  for key, value in file_frequency.items():
+    fc = file_frequency[key]
+    ml = number_of_line_changes[key]
+    cc = complexity[key]
+    composition[key] = fc*ml*cc
+  return composition
+
 def calculate_loc_tree(node):
   loc = 0
   for each in node.children:
@@ -172,6 +185,8 @@ def analize_repository(name, heatmap_metric):
     dict_of_heatmap_metric = get_files_cyclomatic_complexity_in_commits(name)
   elif heatmap_metric == HeatmapMetric.LOC_CHANGES:
     dict_of_heatmap_metric = get_number_of_lines_of_code_changes_in_commits(name)
+  elif heatmap_metric == HeatmapMetric.COMPOSITION:
+    dict_of_heatmap_metric = get_composition(name)
   else:
     raise IndexError
   
@@ -195,6 +210,7 @@ def initialize():
   name = url.split('/')[-1]
   heatmap_metric = os.environ['HEATMAP_METRIC']
   return url, name, heatmap_metric
+  
 def run():
   try:
     url, name, heatmap_metric = initialize()
