@@ -68,13 +68,13 @@ function createTextElement(className, node, color, isNode=true) {
 }
 
 function renderTooltip(node, fillColor, textColor) {
-  const { coords, name, proportion, type, heatmap } = node;
+  const { coords, name, weight, type, heatmap } = node;
   let top, bottom, right, left, middleOfTooltip = null;
   const textContent = [
     'label=' + name, 
-    'value=' + proportion, 
+    'weight=' + weight, 
     'type=' + type?.toLowerCase(), 
-    'heatmap=' + Math.round(heatmap)
+    heatmapScaleTitle + '=' + Math.round(heatmap)
   ]
   const maxWidth = currentRoot.coords.width + currentRoot.coords.x;
   const maxHeight = currentRoot.coords.height;
@@ -154,30 +154,30 @@ function createNode(jsonData) {
       id: count || 0,
       name: jsonData.hasOwnProperty('name') ? jsonData.name : null,
       parent: jsonData.parent || null,
-      proportion: jsonData.proportion || 0,
+      weight: jsonData.weight || 0,
       children: jsonData.children || [],
       topOffset: 0,
       type: jsonData.type || null,
       heatmap: jsonData.heatmap || null,
       coords: jsonData.coords || {},
-      scaledProportion: 0
+      scaledWeight: 0
     }
 }
 
 function createSubnode(data, parentNode) {
   count++;
-  data.children.sort((first, second) => second.loc - first.loc);
+  data.children.sort((first, second) => second.weight - first.weight);
   data.children.forEach((child) => {
       const node = { 
           id: count,
           name: child.name,
           parent: parentNode.id,
-          proportion: child.loc,
+          weight: child.weight,
           topOffset: 0,
           type: child.type,
           heatmap: child.heatmap,
           children: [],
-          scaledProportion: 0
+          scaledWeight: 0
       };
       parentNode?.children?.push(node);
       createSubnode(child, node);
@@ -188,7 +188,7 @@ function updateToggleButtonText() {
   const textElement = getElementById('collapse-button-text');
   const textContent = expandedList.map((node) => node.name);
   textContent.unshift(root.name);
-  const totalSize = textContent.length == 1 ? root.proportion : expandedList[expandedList.length - 1].proportion;
+  const totalSize = textContent.length == 1 ? root.weight : expandedList[expandedList.length - 1].weight;
   textElement.textContent = textContent.join(' / ') + ': ' + totalSize;
 }
 
@@ -221,12 +221,12 @@ function getPathToNode(node) {
     if(isAlreadyExpanded(currentNode)) {
       break;
     }
-    path.push({ id: currentNode.id, name: currentNode.name, proportion: currentNode.proportion });
+    path.push({ id: currentNode.id, name: currentNode.name, weight: currentNode.weight });
     parent = currentNode.parent;
   }
   path.pop();
   path.reverse();
-  path.push({ id: node.id, name: node.name, proportion: node.proportion });
+  path.push({ id: node.id, name: node.name, weight: node.weight });
 
   return path;
 }
@@ -256,7 +256,7 @@ function createToggleButton(params = {}) {
   path.addEventListener('click', () => collapse());
   container.appendChild(path);
 
-  const text = createTextElement('text', { name: root.name + ': ' + root.proportion, coords: { y: y + (toggleButtonHeight - fontSize)/2, width, x } }, 'rgb(0,0,0)', false);
+  const text = createTextElement('text', { name: root.name + ': ' + root.weight, coords: { y: y + (toggleButtonHeight - fontSize)/2, width, x } }, 'rgb(0,0,0)', false);
   text.setAttribute('id', 'collapse-button-text');
   container.appendChild(text);
 
@@ -316,7 +316,7 @@ function createHeatmapScale(params = {}) {
   
   textValues.forEach((value) => {
 
-    const proportion = ((value - heatmap.min) / (heatmap.max - heatmap.min));
+    const weight = ((value - heatmap.min) / (heatmap.max - heatmap.min));
 
     let text = createSvgElement('text');
 
@@ -325,7 +325,7 @@ function createHeatmapScale(params = {}) {
     text.setAttribute('y', 0);
     text.textContent = value;
    
-    const y = (1 - proportion)*(scaleParams.height);
+    const y = (1 - weight)*(scaleParams.height);
 
     text.setAttribute('style', `font-size: ${fontSize - 3}px; fill: rgb(0,0,0); fill-opacity: 1; white-space: pre;`);
     text.setAttribute('transform', `translate(${scaleParams.x + scaleParams.width + margin}, ${y == 0 ? scaleParams.y + margin : y + scaleParams.y})`);
@@ -372,34 +372,47 @@ function getMinWidth() {
   return { value: rectangle.height, vertical: true };
 }
 
-const layoutRow = (row, width, vertical, element) => {
+function shouldRenderRectangle(params = {}) {
+  const { y, x, width, height } = params;
+  return y < height + y && x < width + x;
+}
+
+function layoutRow(row, width, vertical, element) {
+
   if(row.length === 0) {
     return;
   }
-  const rowHeight = row.map(each => each.scaledProportion).reduce((a,b) => a + b, 0) / width;
+
+  const rowHeight = row.map(each => each.scaledWeight).reduce((a,b) => a + b, 0) / width;
+
   row.forEach((rowItem) => {
-    const rowWidth = rowItem.scaledProportion / rowHeight;
-    let data;
+
+    const rowWidth = rowItem.scaledWeight / rowHeight;
+
+    let coords = {
+      x: rectangle.x,
+      y: rectangle.y
+    };
+
     if (vertical) {
-      data = {
-        x: rectangle.x,
-        y: rectangle.y,
+      coords = {
+        ...coords,
         width: rowHeight,
         height: rowWidth,
       };
       rectangle.y += rowWidth;
     } else {
-      data = {
-        x: rectangle.x,
-        y: rectangle.y,
+      coords = {
+        ...coords,
         width: rowWidth,
         height: rowHeight,
       };
       rectangle.x += rowWidth;
     }
 
-    rowItem.coords = data;
-    if(data.y < data.height + data.y && data.x < data.width + data.x) {
+    rowItem.coords = coords;
+
+    if(shouldRenderRectangle(coords)) {
       element.appendChild(createRect(rowItem));
     }
   });
@@ -416,23 +429,23 @@ const layoutRow = (row, width, vertical, element) => {
 };
 
 function worstRatio(row, width) {
-  const values = row.map(each => each.scaledProportion);
-  const sum = values.reduce((a, b) => a + b, 0);
-  const rowMax = Math.max(...values);
-  const rowMin = Math.min(...values);
+  const weights = row.map(each => each.scaledWeight);
+  const sum = weights.reduce((a, b) => a + b, 0);
+  const rowMax = Math.max(...weights);
+  const rowMin = Math.min(...weights);
   return Math.max(
     (width ** 2 * rowMax) / sum ** 2,
     sum ** 2 / (width ** 2 * rowMin)
   );
 }
 
-const layoutLastRow = (rows, children, width, element) => {
+function layoutLastRow(rows, children, width, element) {
   const { vertical } = getMinWidth();
   layoutRow(rows, width, vertical, element);
   layoutRow(children, width, vertical, element);
 };
 
-const squarify = (children, row, width, element) => {
+function squarify(children, row, width, element) {
 
   if(children.length === 0){
     return;
@@ -457,10 +470,10 @@ const squarify = (children, row, width, element) => {
 
 function traverse(node, element) {
   const isRoot = node.id === currentRoot.id;
-  const totalValue = node.children.map((child) => child.proportion).reduce((a, b) => a + b, 0);
+  const totalValue = node.children.map((child) => child.weight).reduce((a, b) => a + b, 0);
   const width = isRoot ? node.coords.width : node.coords.width - 2*margin;
   const height = isRoot ? node.coords.height - toggleButtonHeight : node.coords.height - node.topOffset - margin;
-  node.children.forEach((child) => { child.scaledProportion = (child.proportion * width * height) / totalValue });
+  node.children.forEach((child) => { child.scaledWeight = (child.weight * width * height) / totalValue });
   const children = [...node.children];
 
   rectangle = {
@@ -517,13 +530,13 @@ function create(jsonData) {
   const rootNode = createNode({
       id: count,
       name: parsedData.name,
-      proportion: parsedData.loc,
+      weight: parsedData.weight,
       children: [],
       type: parsedData.type,
       heatmap: parsedData.heatmap,
       topOffset: 0,
       parent: null,
-      scaledProportion: 0
+      scaledWeight: 0
   });
   createSubnode(parsedData, rootNode);
   return rootNode;
