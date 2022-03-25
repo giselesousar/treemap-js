@@ -32,7 +32,7 @@ def create_json_object(node):
   return {
     "name": node.name,
     "type": node.node_type.name,
-    "loc": node.loc,
+    "weight": node.loc,
     "depth": node.depth,
     "heatmap": node.heatmap,
     "children": []
