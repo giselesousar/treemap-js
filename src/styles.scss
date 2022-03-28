@@ -22,11 +22,12 @@
     fill-opacity: 1;
     font-family: 'Roboto', sans-serif;
     cursor: pointer;
+    pointer-events: none;
 }
 
 .text-scale {
     fill: rgb(66, 66, 66); 
-    fill-opacity: 1;
+    fill-opacity: 1; 
     font-family: 'Roboto', sans-serif;
 }
 

@@ -7,17 +7,12 @@ const fontFamily = 'Roboto';
 const events = {
   ROOT_CHANGE: new Event('root-change')
 };
-const heatmap = {
-  min: 0,
-  max: 0
-};
 const margin = 5;
 const expandedList = [];
 const marginTop = fontSize + 8;
 const toggleButtonHeight = fontSize + 20;
 const heatmapScaleWidth = 30;
 const heatmapScalePadding = 30;
-let heatmapScaleTitle = '';
 
 let rectangle = {data: []};
 
@@ -67,21 +62,21 @@ function createTextElement(className, node, color, isNode=true) {
   return textTag;
 }
 
-function renderTooltip(node, fillColor, textColor) {
-  const { coords, name, weight, type, heatmap } = node;
+function renderTooltip(node, fillColor, textColor, heatmap) {
+  const { coords, name, weight, type } = node;
   let top, bottom, right, left, middleOfTooltip = null;
   const textContent = [
     'label=' + name, 
     'weight=' + weight, 
     'type=' + type?.toLowerCase(), 
-    heatmapScaleTitle + '=' + Math.round(heatmap)
+    heatmap + '=' + Math.round(node.heatmap)
   ]
   const maxWidth = currentRoot.coords.width + currentRoot.coords.x;
   const maxHeight = currentRoot.coords.height;
   const maxTextPixelWidth = Math.max(...textContent.map(el => measureTextWidth(el)));
   const container = createSvgElement('g'), path = createSvgElement('path');
 
-  path.setAttribute('style', `fill: ${fillColor}; stroke: rgb(54, 54, 54); stroke-width: 2;`);
+  path.setAttribute('style', `fill: ${fillColor};  fill-opacity: 1; stroke: rgb(54, 54, 54); stroke-width: 2;`);
   container.classList.add('tooltip');
   container.appendChild(path);
 
@@ -91,7 +86,7 @@ function renderTooltip(node, fillColor, textColor) {
     bottom: 0,
     left: 0,
     right: 0,
-    middle: bottom > maxHeight ? coords.height + coords.y - fontSize/2  : coords.y + fontSize/2 
+    middle: bottom > maxHeight ? coords.height - fontSize/2  : coords.y + fontSize/2 
   }
 
   top = triangle.middle - (textContent.length * fontSize)/2 - margin;
@@ -136,13 +131,13 @@ function removeTooltip() {
   document.querySelectorAll('.tooltip').forEach((el) => el.remove());
 }
 
-function createRect(node) {
-  const { fill, color } = calculateRectColor(node.heatmap, heatmap);
+function createRect(node, heatmap) {
+  const { fill, color } = calculateRectColor(node.heatmap, heatmap.values);
   const container = createSvgElement('g');
   if(node.type === 'DIR') {
     container.addEventListener('click', () => expand(node));
   }
-  container.addEventListener('mouseover', () => renderTooltip(node, fill, color));
+  container.addEventListener('mouseover', () => renderTooltip(node, fill, color, heatmap.title));
   container.addEventListener('mouseout', () => removeTooltip());
   container.appendChild(createPathElement('path', fill, node.coords));
   container.appendChild(createTextElement('text', node, color));
@@ -252,7 +247,7 @@ function createToggleButton(params = {}) {
   const { x, y, width } = params;
   const container = createSvgElement('g');
 
-  const path = createPathElement('path', 'hsl(240, 100%, 92%)', { y, x, width: width, height: y + toggleButtonHeight });
+  const path = createPathElement('path', 'hsl(240, 100%, 92%)', { y, x, width: width, height: toggleButtonHeight });
   path.addEventListener('click', () => collapse());
   container.appendChild(path);
 
@@ -263,8 +258,8 @@ function createToggleButton(params = {}) {
   return container;
 }
 
-function createHeatmapScale(params = {}) {
-  const { y, width, height } = params;
+function createHeatmapScale(heatmap, params = {}) {
+  const { x, y, width, height } = params;
 
   const container = createSvgElement('g');
   const containerText = createSvgElement('g');
@@ -294,9 +289,9 @@ function createHeatmapScale(params = {}) {
 
   const scaleParams = {
     y: y + toggleButtonHeight + heatmapScalePadding, 
-    x: width + 15, 
+    x: width + x + 15, 
     width: heatmapScaleWidth, 
-    height: height - (y + toggleButtonHeight + 2*heatmapScalePadding) 
+    height: height - 5*marginTop
   }
 
   title.classList.add('text-scale');
@@ -304,19 +299,19 @@ function createHeatmapScale(params = {}) {
   title.setAttribute('y', scaleParams.y - 20);
   title.setAttribute('text-anchor', 'middle');
   title.setAttribute('style', `font-size: ${fontSize - 3}px; fill: rgb(0,0,0); fill-opacity: 1; white-space: pre;`);
-  title.textContent = heatmapScaleTitle;
+  title.textContent = heatmap.title;
 
   container.appendChild(title)
 
   const path = createPathElement('scale', "url('#Gradient')", scaleParams);
   container.appendChild(path);
 
-  const diff = heatmap.max - heatmap.min;
-  const textValues = [heatmap.min, Math.round(diff/4), Math.round(diff/2), Math.round(diff/2 + diff/4), heatmap.max];
+  const diff = heatmap.values.max - heatmap.values.min;
+  const textValues = [heatmap.values.min, Math.round(diff/4), Math.round(diff/2), Math.round(diff/2 + diff/4), heatmap.values.max];
   
   textValues.forEach((value) => {
 
-    const weight = ((value - heatmap.min) / (heatmap.max - heatmap.min));
+    const weight = ((value - heatmap.values.min) / (heatmap.values.max - heatmap.values.min));
 
     let text = createSvgElement('text');
 
@@ -337,17 +332,16 @@ function createHeatmapScale(params = {}) {
   return container;
 }
 
-function cerateTreemapContainer(targetElement, params = {}) {
-  const { top, bottom, left, right } = params;
+function cerateTreemapContainer(targetElement, heatmap, params = {}) {
+  const { x, y, width, height } = params;
 
   params.width = params.width - heatmapScaleWidth - 2*heatmapScalePadding;
 
   const svg = createSvgElement('svg');
   svg.setAttribute('id', 'treemap');
-  svg.setAttribute('width', right + left);
-  svg.setAttribute('height', bottom + top);
+  svg.setAttribute('viewBox', `${x} ${y} ${width} ${height}`)
 
-  svg.appendChild(createHeatmapScale(params));
+  svg.appendChild(createHeatmapScale(heatmap, params));
   svg.appendChild(createToggleButton(params));
 
   const container = createSvgElement('g');
@@ -377,7 +371,7 @@ function shouldRenderRectangle(params = {}) {
   return y < height + y && x < width + x;
 }
 
-function layoutRow(row, width, vertical, element) {
+function layoutRow(row, width, vertical, element, heatmap) {
 
   if(row.length === 0) {
     return;
@@ -413,7 +407,7 @@ function layoutRow(row, width, vertical, element) {
     rowItem.coords = coords;
 
     if(shouldRenderRectangle(coords)) {
-      element.appendChild(createRect(rowItem));
+      element.appendChild(createRect(rowItem, heatmap));
     }
   });
 
@@ -439,20 +433,20 @@ function worstRatio(row, width) {
   );
 }
 
-function layoutLastRow(rows, children, width, element) {
+function layoutLastRow(rows, children, width, element, heatmap) {
   const { vertical } = getMinWidth();
-  layoutRow(rows, width, vertical, element);
-  layoutRow(children, width, vertical, element);
+  layoutRow(rows, width, vertical, element, heatmap);
+  layoutRow(children, width, vertical, element, heatmap);
 };
 
-function squarify(children, row, width, element) {
+function squarify(children, row, width, element, heatmap) {
 
   if(children.length === 0){
     return;
   }
 
   if (children.length === 1) {
-    return layoutLastRow(row, children, width, element);
+    return layoutLastRow(row, children, width, element, heatmap);
   }
 
   const rowWithChild = [...row, children[0]];
@@ -462,13 +456,13 @@ function squarify(children, row, width, element) {
     worstRatio(row, width) >= worstRatio(rowWithChild, width)
   ) {
     children.shift();
-    return squarify(children, rowWithChild, width, element);
+    return squarify(children, rowWithChild, width, element, heatmap);
   }
-  layoutRow(row, width, getMinWidth().vertical, element);
-  return squarify(children, [], getMinWidth().value, element);
+  layoutRow(row, width, getMinWidth().vertical, element, heatmap);
+  return squarify(children, [], getMinWidth().value, element, heatmap);
 };
 
-function traverse(node, element) {
+function traverse(node, element, heatmap) {
   const isRoot = node.id === currentRoot.id;
   const totalValue = node.children.map((child) => child.weight).reduce((a, b) => a + b, 0);
   const width = isRoot ? node.coords.width : node.coords.width - 2*margin;
@@ -484,27 +478,31 @@ function traverse(node, element) {
     height: height
   };
 
-  squarify(children, [], getMinWidth().value, element);
+  squarify(children, [], getMinWidth().value, element, heatmap);
 
   node.children.forEach((child) => {
-    traverse(child, element);
+    traverse(child, element, heatmap);
   })
 }
 
-function renderTreemap(targetElement, params) {
+function renderTreemap(targetElement, params, heatmap) {
   clearTreemap(targetElement);
   currentRoot.coords = params;
-  traverse(currentRoot, targetElement);
+  traverse(currentRoot, targetElement, heatmap);
 }
 
-function resize(targetElement) {
+function resize(targetElement, heatmap) {
   clearTreemap(targetElement);
   const targetElementPosition = targetElement.getBoundingClientRect();
-  const treemapContainer = cerateTreemapContainer(targetElement, targetElementPosition);
-  renderTreemap(treemapContainer, targetElementPosition);
+  const treemapContainer = cerateTreemapContainer(targetElement, heatmap, targetElementPosition);
+  renderTreemap(treemapContainer, targetElementPosition, heatmap);
 }
 
 function calculateMinMaxHeatmap() {
+  const heatmap = {
+    min: 0,
+    max: 0
+  }
   const traverseForGetHeatmapValues = (node) => {
     if(node?.heatmap) {
       if(node.heatmap > heatmap.max) {
@@ -522,6 +520,7 @@ function calculateMinMaxHeatmap() {
   }
  
   traverseForGetHeatmapValues(currentRoot);
+  return heatmap;
 }
 
 function create(jsonData) {
@@ -542,28 +541,32 @@ function create(jsonData) {
   return rootNode;
 }
 
-export function render(jsonData, targetElement, heatmapMetricName) {
+export function render(jsonData, targetElement, heatmapScaleTitle) {
 
   const rootNode = create(jsonData);
-
-  heatmapScaleTitle = heatmapMetricName;
   currentRoot = rootNode; 
   root = rootNode;
-  calculateMinMaxHeatmap();
+  targetElement.innerHTML = "";
+
+  const heatmap = {
+    values: calculateMinMaxHeatmap(),
+    title: heatmapScaleTitle
+  };
+
   const targetElementPosition = targetElement.getBoundingClientRect();
-  const treemapContainer = cerateTreemapContainer(targetElement, targetElementPosition);
+  const treemapContainer = cerateTreemapContainer(targetElement, heatmap, targetElementPosition);
 
   window.addEventListener('root-change', () => { 
     removeTooltip();
-    renderTreemap(treemapContainer, targetElementPosition); 
+    renderTreemap(treemapContainer, targetElementPosition, heatmap); 
     updateToggleButtonText();
   });
 
   window.addEventListener('resize', () => { 
-    resize(targetElement);
+    resize(targetElement, heatmap);
   });
 
-  renderTreemap(treemapContainer, targetElementPosition);
+  renderTreemap(treemapContainer, targetElementPosition, heatmap);
 }
 
 export default {
