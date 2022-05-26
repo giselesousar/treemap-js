@@ -64,6 +64,11 @@ treemap.render(tree, document.querySelector('.root'));
 ### Output
 ![Treemap](img/cassandra_root_2.png)
 
+### Build the treemap bundle
+Webpack will generate the bundle and put it in the /dist folder
+```
+npm run build
+```
 ### For development install dependencies and run scripts
 ```
 $ npm install
